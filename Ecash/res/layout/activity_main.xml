@@ -1,0 +1,51 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="cn.z.ecash.MainActivity"
+    tools:ignore="MergeRootFrame" >
+
+    <Button
+        android:id="@+id/btn_get_balance"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="@string/str_btn_get_balance" />
+
+    <Button
+        android:id="@+id/btn_get_detail"
+        android:layout_marginTop="64dp"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="@string/str_btn_get_detail" />
+    
+    <Button
+        android:id="@+id/btn_get_cardnumber"
+        android:layout_marginTop="128dp"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="@string/str_btn_get_cardnumber"/>
+        
+   <Button
+        android:id="@+id/btn_credit_for_load"
+        android:layout_marginTop="192dp"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="@string/str_btn_credit_for_load" />
+            
+   <Button
+        android:id="@+id/btn_get_ATC"
+        android:layout_marginTop="256dp"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="@string/str_btn_get_ATC" />
+
+   <TextView
+       android:id="@+id/tv_debugshow"
+       android:layout_marginTop="320dp"
+       android:layout_width="match_parent"
+       android:layout_height="64dp"
+       android:text="@string/str_tx_debugshow" />
+
+</FrameLayout>
+

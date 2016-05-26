@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Ecash</string>
+    <string name="activity_laod_name">Load</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="str_btn_get_balance">Get Balance</string>
+    <string name="str_btn_get_detail">Get Detail</string>
+    <string name="str_btn_get_cardnumber">Get CardNumber</string>
+    <string name="str_btn_credit_for_load">Credit for Load</string>
+    <string name="str_btn_get_ATC">Get ATC</string>
+    <string name="str_tx_debugshow">show debug infoC</string>
+    
+        
+
+</resources>
