@@ -4,13 +4,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import cn.z.ecash.nfc.CardManager;
-import android.support.v7.app.ActionBarActivity;
-import android.support.v7.app.ActionBar;
+import cn.z.ecash.nfc.PbocManager;
 import android.support.v4.app.Fragment;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.content.res.Resources.Theme;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
 import android.os.Parcelable;
@@ -25,7 +26,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.os.Build;
 
-@SuppressLint("NewApi") public class MainActivity extends ActionBarActivity {
+@SuppressLint("NewApi") public class MainActivity extends Activity  {
 	private final static int REQUEST_CODE = 1;
 	TextView tvShowDebuginfo;
 	
@@ -33,17 +34,14 @@ import android.os.Build;
 	private PendingIntent pendingIntent;
 	private Resources res;
 	Map<String,Object> carddata = new HashMap<String, Object>();
+	
+	private PbocManager pbocm = new PbocManager();
 
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-
-		if (savedInstanceState == null) {
-			getSupportFragmentManager().beginTransaction()
-					.add(R.id.container, new PlaceholderFragment()).commit();
-		}
 		
 		final Resources res = getResources();
 		this.res = res;
@@ -151,21 +149,28 @@ import android.os.Build;
 		carddata = CardManager.read(p, res);
 		Log.i("MAIN", "【onNewIntent2】:");
 	}
-	protected void clickAllButton(Intent intent) {
+	protected boolean selectcard(Intent intent) {
 		final Parcelable p = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 		if(p == null){
-			Log.i("MAIN", "【clickAllButton1】:Parcelable == null");
-			return ;
+			Log.i("MAIN", "【onNewIntent】:Parcelable == null");
+			return false;
 		}
-		Log.i("MAIN", "【clickAllButton1】:");
-		carddata = CardManager.read(p, res);
-		Log.i("MAIN", "【clickAllButton2】:");
+		Log.i("MAIN", "【onNewIntent1】:");
+		if(!pbocm.SelectCard(p, res)){
+			Log.i("MAIN", "【onNewIntent2】:select err");
+			return false;
+		}
+		Log.i("MAIN", "【onNewIntent2】:");
+		return true;
 	}
 	
 	void eCashGetBalance() {
 		Log.i("MAIN", "【Click button get balance】:");
-		clickAllButton(getIntent());
-		tvShowDebuginfo.setText("---debug info---\nbalance="+carddata.get("cash")+"元");
+		if(!selectcard(getIntent())){
+			Log.i("MAIN", "【Click button get balance】:select card err");
+			return ;
+		}
+		tvShowDebuginfo.setText("---debug info---\nbalance="+pbocm.getBalance()+"元");
 	}
 
 	void eCashGetDetail() {
