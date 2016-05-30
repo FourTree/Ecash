@@ -35,7 +35,7 @@ import android.os.Build;
 	private Resources res;
 	Map<String,Object> carddata = new HashMap<String, Object>();
 	
-	private PbocManager pbocm = new PbocManager();
+	public static PbocManager pbocm = new PbocManager();
 
 
 	@Override
@@ -101,7 +101,16 @@ import android.os.Build;
 				getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
 		onNewIntent(getIntent());
 	}
+	@Override
+	protected void onResume() {
+		super.onResume();
+		Log.i("MAIN", "【onResume】:start onResume()");
 
+		if (nfcAdapter != null)
+			nfcAdapter.enableForegroundDispatch(this, pendingIntent,
+					CardManager.FILTERS, CardManager.TECHLISTS);
+
+	}
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 
@@ -146,7 +155,8 @@ import android.os.Build;
 			return ;
 		}
 		Log.i("MAIN", "【onNewIntent1】:");
-		carddata = CardManager.read(p, res);
+//		carddata = CardManager.read(p, res);
+		pbocm.init(p, res);
 		Log.i("MAIN", "【onNewIntent2】:");
 	}
 	protected boolean selectcard(Intent intent) {
@@ -186,6 +196,14 @@ import android.os.Build;
 	}
 
 	void eCashCreditForLoad() {
+//		final Parcelable p = getIntent().getParcelableExtra(NfcAdapter.EXTRA_TAG);
+//		if(p == null){
+//			Log.i("MAIN", "【onNewIntent】:Parcelable == null");
+//			return ;
+//		}
+//		pbocm.init(p, res);
+//		Log.i("MAIN", "【INIT】:done");
+		
 		Bundle loadbdl = new Bundle();
 		loadbdl.putString("showstring", "credit for load 3413435");
 

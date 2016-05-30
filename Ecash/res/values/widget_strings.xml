@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    
+    <!-- <string name="app_name">金电电子现金插件</string> -->
+    <string name="load_name">充值</string>
+    <string name="openacc_name">开户</string>
+    <string name="cancleacc_name">销户</string>
+    <string name="new_password">新密码</string>
+    <string name="input_password">输入交易密码</string>
+    <!--<string name="action_settings">Settings</string> -->
+    <!--<string name="hello_world">欢迎!</string> -->
+    
+    <!-- 初始化应用TLV常量 -->
+    <string name="GPOCLA">80</string>
+    <string name="GPOINS">A8</string>
+    <string name="GPOP1">00</string>
+    <string name="GPOP2">00</string>
+    <string name="tagA5">A5</string>
+    <!-- select 指令 -->
+    <string name="selectcmd">00A4040008A000000333010106</string>
+    <!-- PDOL -->
+    <string name="tag9F38">9F38</string>
+    <!-- PDOL标签标记 -->
+    <string name="PDOLTag">83</string>
+    <!-- 终端交易属性 -->
+    <string name="tag9F66">9F66</string>
+    <string name="tag9F66value">44000000</string>
+    <!-- 电子现金终端支持指示器 -->
+    <string name="tag9F7A">9F7A</string>
+    <string name="tag9F7Avalue">00</string>
+    <!-- 电子现金终端交易限额 -->
+    <string name="tag9F7B">9F7B</string>
+    <string name="tag9F7Bvalue">000000100000</string>
+    <!-- 授权金额 -->
+    <string name="tag9F02">9F02</string>
+    <!-- 其它金额 -->
+    <string name="tag9F03">9F03</string>
+    <string name="tag9F03value">000000000000</string>
+    <!-- 终端国家代码 -->
+    <string name="tag9F1A">9F1A</string>
+    <string name="tag9F1Avalue">0156</string>
+    <!-- 终端验证结果 -->
+    <string name="tag95">95</string>
+    <string name="tag95value">0000000000</string>
+    <!-- 交易货币代码 -->
+    <string name="tag5F2A">5F2A</string>
+    <string name="tag5F2Avalue">0156</string>
+    <!-- 交易日期 -->
+    <string name="tag9A">9A</string>
+    <!-- 交易时间 -->
+    <string name="tag9F21">9F21</string>
+    <!-- 交易类型 -->
+    <string name="tag9C">9C</string>
+    <string name="tag9Cvalue">60</string>
+    <!-- 终端不可预知数据 -->
+    <string name="tag9F37">9F37</string>
+     <!-- CAPP 交易指示位-->
+    <string name="tagDF60">DF60</string>
+    <string name="tagDF60value">0E</string>
+    <!-- 商户名称 -->
+    <string name="tag9F4E">9F4E</string>
+    <string name="tag9F4Evalue">0000000000000000000000000000000000000000</string>
+    <!-- 授权响应码 -->
+    <string name="tag8A">8A</string>
+    
+    <!-- Read Record指令常量 -->
+    <string name="AFL08">0C</string>
+    <string name="AFL10">14</string>
+	<string name="AFL18">1C</string>
+	<string name="AFL20">24</string>
+	<string name="AFL28">2C</string>
+	<string name="AFL30">34</string>
+	<string name="AFL38">3C</string>
+	
+	<string name="RRCLA">00</string>
+    <string name="RRINS">B2</string>
+    <string name="RRLC">00</string>
+    <!-- 0101 -->
+    <string name="tag57">57</string>
+    <string name="tag9F1F">9F1F</string>
+    <!-- 0102 -->
+    <string name="tag9F42">9F42</string>
+    <string name="tag5F34">5F34</string>
+    <string name="tag9F07">9F07</string>
+    <string name="tag5F20">5F20</string>
+    <string name="tag8E">8E</string>
+    <string name="tag9F61">9F61</string>
+    <string name="tag9F62">9F62</string>
+    <!-- 0103 -->
+    <string name="tag8C">8C</string>
+    <string name="tag8D">8D</string>
+    <string name="tag5F30">5F30</string>
+    <string name="tag9F63">9F63</string> 
+    <!-- 0104 -->
+    <string name="tag9F0D">9F0D</string>
+    <string name="tag9F0E">9F0E</string>
+    <string name="tag9F0F">9F0F</string>
+    <string name="tag5F28">5F28</string>
+    <!-- 0201 -->
+    <string name="tag5A">5A</string>
+    <string name="tag5F25">5F25</string>
+    <string name="tag5F24">5F24</string>
+    <string name="tag9F08">9F08</string>
+    <!-- 0202 -->
+    <string name="tag8F">8F</string>
+    <string name="tag90">90</string>
+    <!-- 0203 -->
+    <string name="tag92">92</string>
+    <string name="tag93">93</string>
+    <string name="tag9F32">9F32</string>
+    <string name="tag9F4A">9F4A</string>
+    <!-- 0204 -->
+    <string name="tag9F46">9F46</string>
+    <string name="tag9F48">9F48</string>
+    <string name="tag9F47">9F47</string>
+    <!-- 0205 -->
+    <string name="tag9F74">9F74</string>
+    
+    <string name="tag9F49">9F49</string>
+    <string name="tag9F14">9F14</string>
+    <string name="tag9F23">9F23</string>
+    <!-- 应用交易计数器 -->
+    <string name="tag9F36">9F36</string>
+    
+    <!-- 应用版本 -->
+    <string name="appversion">0010</string>
+    
+    <!--卡片行为分析 GENERATE AC 指令 -->
+    <string name="ACCLA">80</string>
+    <string name="ACINS">AE</string>
+    <string name="ACP1">80</string>
+    <string name="ACP2">00</string>
+    
+    <!-- 交易输入方式 -->
+    <string name="TransInMo">05</string>
+    <!-- 终端性能 -->
+    <string name="tag9F33value">60E8C8</string>
+    <!-- 终端类型 -->
+    <string name="tag9F35value">34</string>
+    
+    <!-- 交易结束处理 GENERATE AC 指令-->
+    <string name="ENDACCLA">80</string>
+    <string name="ENDACINS">AE</string>
+    <string name="ENDACP1">40</string>
+    <string name="ENDACP2">00</string>
+    <!-- 外部认证命令 -->
+    <string name="externalAuth">00820000</string>
+    
+    <!-- 加密公钥 -->
+    <!-- <string name="publickey">MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCBAYDwr2djMh64C8dXijm0y5aOZM3uP7w9Lr1JfALnlvR+mHZ+6kFz1D3OJQa5nr4DbcHkeB3Mzde10exh+QmJ6YOo8zmW08CHQf0Ijr/+8JtNJFZLwO/SzWs0NUPJ+KzekHcDPsRefz8oN1cs/HMofIuw19x+TINSmlEpj82EfwIDAQAB</string> -->
+    <string name="publickey">MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCFB5HEVu+84VL7vzUSTkL5uG2hi41/pOczjqti2tq8e5j6a2QTCEGlMbrKw8BX0mAbPFX/USIPMjqDBbN6igE5Fw8fDoeIkYYWMhzO2LCDNDXZg1zsb4oWimltmJim0YVWOSUPKod/YiAcpr3Vt1G0Djwfai05iT/yJRGel+HaIwIDAQAB</string>
+    
+    <string-array name="orgcodes">
+
+        <item>0005253450</item>
+
+    </string-array>
+</resources>
