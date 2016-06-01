@@ -25,6 +25,7 @@
     <!-- 终端交易属性 -->
     <string name="tag9F66">9F66</string>
     <string name="tag9F66value">44000000</string>
+    <string name="qtag9F66value">BE000000</string>
     <!-- 电子现金终端支持指示器 -->
     <string name="tag9F7A">9F7A</string>
     <string name="tag9F7Avalue">00</string>
@@ -52,6 +53,7 @@
     <!-- 交易类型 -->
     <string name="tag9C">9C</string>
     <string name="tag9Cvalue">60</string>
+    <string name="qtag9Cvalue">00</string>
     <!-- 终端不可预知数据 -->
     <string name="tag9F37">9F37</string>
      <!-- CAPP 交易指示位-->

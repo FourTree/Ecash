@@ -8,10 +8,12 @@
     <string name="str_btn_get_balance">Get Balance</string>
     <string name="str_btn_get_detail">Get Detail</string>
     <string name="str_btn_get_cardnumber">Get CardNumber</string>
-    <string name="str_btn_credit_for_load">Credit for Load</string>
+    <string name="str_btn_credit_for_load">Credit for Load >></string>
     <string name="str_btn_get_ATC">Get ATC</string>
-    <string name="str_tx_debugshow">show debug infoC</string>
+    <string name="str_tx_debugshow">show debug info</string>
+    <string name="title_activity_quick_pass">QuickPass</string>
+    <string name="str_input_purchase_money">QuickPass money:</string>
+    <string name="str_btn_quick_pass">QuickPass >></string>
     
-        
 
 </resources>

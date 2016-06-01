@@ -24,6 +24,7 @@ import android.util.Log;
 
 
 public class Iso7816 {
+	private static final String LOGTAG = new String("CMD");
 	public static final byte[] EMPTY = { 0 };
 
 	protected byte[] data;
@@ -75,7 +76,7 @@ public class Iso7816 {
 
 	@Override
 	public String toString() {
-		return Util.toHexString(data, 0, data.length);
+		return NfcUtil.toHexString(data, 0, data.length);
 	}
 
 	public final static class ID extends Iso7816 {
@@ -383,7 +384,7 @@ public class Iso7816 {
 		}
 		
 		public Response sendCmd(String cmd) {
-			return new Response(transceive(Util.hexStringToByteArray(cmd)));
+			return new Response(transceive(NfcUtil.hexStringToByteArray(cmd)));
 		}
 		public Response sendCmd(byte[] cmd) {
 			return new Response(transceive(cmd));
@@ -483,11 +484,15 @@ public class Iso7816 {
 
 		public byte[] transceive(final byte[] cmd) {
 			try {
-				Log.i("CMD", "【CMD】-->"+Util.toHexString(cmd));
+				Log.i(LOGTAG, "【CMD】-->"+NfcUtil.toHexString(cmd));
 				byte[] res = nfcTag.transceive(cmd);
-				Log.i("CMD", "【RES】-->"+Util.toHexString(res));
+				if(res == null){
+					Log.i(LOGTAG, "【RES】:response err");
+				}
+				Log.i(LOGTAG, "【RES】-->"+NfcUtil.toHexString(res));
 				return res;
 			} catch (Exception e) {
+				Log.i(LOGTAG, "【RES】: send cmd exception");
 				return Response.ERROR;
 			}
 		}

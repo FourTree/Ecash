@@ -15,7 +15,7 @@ Additional permission under GNU GPL version 3 section 7 */
 
 package cn.z.ecash.nfc;
 
-public final class Util {
+public final class NfcUtil {
 	
 	/**
 	 * fail result for find operation.
@@ -25,7 +25,7 @@ public final class Util {
 	private final static char[] HEX = { '0', '1', '2', '3', '4', '5', '6', '7',
 			'8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
-	private Util() {
+	private NfcUtil() {
 	}
 
 	public static byte[] toBytes(int a) {

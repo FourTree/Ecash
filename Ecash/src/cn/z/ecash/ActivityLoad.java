@@ -11,19 +11,16 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
-
-
-
-
-
-
-
 import java.util.Map;
 
+import cn.z.ecash.nfc.CardManager;
 import cn.z.ecash.nfc.PbocManager;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
 import android.os.Message;
@@ -38,20 +35,27 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+@SuppressLint("NewApi")
 public class ActivityLoad extends Activity {
+	private static final String LOGTAG = new String("LOAD");
+
+	private NfcAdapter nfcAdapter;
+	private PendingIntent pendingIntent;
+	private Resources res;
+
 	public final static int RESULT_CODE = 1;
-	TextView tvshowparm ;
+	TextView tvshowparm;
 	EditText etInput;
-	private PbocManager pbocm = new PbocManager();
+	private PbocManager pbocmanager = null;
 	private String balance;
 
 	private static final String TAG = "ActivityLoad";
-	
+
 	private String pattern = "000000000000";
 	private DecimalFormat df;
 	private DateFormat dfdate;
 	private static final char[] HEX_DIGITS = { '0', '1', '2', '3', '4', '5',
-		'6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+			'6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 	private String AIP; // 应用交互特征
 	private String AFL; // 应用文件定位器
@@ -133,32 +137,75 @@ public class ActivityLoad extends Activity {
 	private boolean continueFlag = true;
 	private String failReasion = "";
 
-
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_load);
-		
+		this.res = res;
 		Bundle tbdl = this.getIntent().getExtras();
 		String param = tbdl.getString("showstring");
 
 		tvshowparm = (TextView) findViewById(R.id.tv_showdebuginfo);
 		tvshowparm.setText(param);
 
-		etInput = (EditText) findViewById(R.id.ev_credit_for_load_inputmoney);
-		
-		pbocm = MainActivity.pbocm;
-		
+		etInput = (EditText) findViewById(R.id.et_credit_for_load_inputmoney);
+
 		Button btnCreditForLoadOK = (Button) findViewById(R.id.btn_credit_for_load_ok);
 		btnCreditForLoadOK.setOnClickListener(new OnClickListener() {
 
 			public void onClick(View arg0) {
 				// TODO Auto-generated method stub
-//				retMainActivity();
+				// retMainActivity();
 				creditforload();
 			}
 		});
+		nfcAdapter = NfcAdapter.getDefaultAdapter(this);
+		pendingIntent = PendingIntent.getActivity(this, 0, new Intent(this,
+				getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
+		onNewIntentCallByonCreate(getIntent());
+	}
 
+	@Override
+	protected void onResume() {
+		super.onResume();
+		Log.i(LOGTAG, "【onResume】:start");
+
+		if (nfcAdapter != null)
+			nfcAdapter.enableForegroundDispatch(this, pendingIntent,
+					CardManager.FILTERS, CardManager.TECHLISTS);
+		Log.i(LOGTAG, "【onResume】:end");
+	}
+
+	/**
+	 * 该方法调用时需要重新实例化 PbocManager 实例
+	 */
+	@Override
+	protected void onNewIntent(Intent intent) {
+		Log.i(LOGTAG, "【onNewIntent】:Clear PbocManager Instance");
+		PbocManager.clearInstance();
+		onNewIntentCallByonCreate(intent);
+	}
+
+	/**
+	 * 该方法在onCreate方法中调用，PbocManag实例可以已经存在的。
+	 * 
+	 * @param intent
+	 */
+	protected void onNewIntentCallByonCreate(Intent intent) {
+		pbocmanager = PbocManager.getInstance();
+		if (null != pbocmanager) {
+			Log.i(LOGTAG, "【onNewIntent】:PbocManager Instance != null");
+			return;
+		}
+		final Parcelable p = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+		if (p == null) {
+			Log.i(LOGTAG, "【onNewIntent】:Parcelable == null");
+			return;
+		}
+		Log.i(LOGTAG, "【onNewIntent】:Parcelable != null");
+		PbocManager.clearInstance();
+		pbocmanager = PbocManager.getInstance(p, res);
+		Log.i(LOGTAG, "【onNewIntent】:PbocManager.getInstance" + pbocmanager);
 	}
 
 	void retMainActivity() {
@@ -171,7 +218,7 @@ public class ActivityLoad extends Activity {
 		// tintent.putExtras(tbdl);
 		//
 		// startActivity(tintent);
-		
+
 		String strinput = etInput.getText().toString();
 		Intent intent = new Intent();
 		intent.putExtra("inputloamoney", strinput);//
@@ -179,147 +226,235 @@ public class ActivityLoad extends Activity {
 		finish();
 
 	}
-	void creditforload(){
+
+	void creditforload() {
 		int inputlen = etInput.getText().length();
-		if((0 == inputlen) || (6 < inputlen)){
-			tvshowparm.setText("input wrong!!! please input the right nunber...");;
-			return ;
+		if ((0 == inputlen) || (6 < inputlen)) {
+			tvshowparm
+					.setText("input wrong!!! please input the right nunber...");
+			return;
 		}
 		String strinputmoney = etInput.getText().toString();
-		processcreditforload(getIntent());
+		int result = processcreditforload(getIntent());
+		if (result < 0) {
+			// 充值异常
+			showDialog("充值失败", "未知错误");
+		} else {
+			// 执行发卡行脚本成功
+			String afterbalance = pbocmanager.getBalance();
+			showDialog("充值成功", "当前余额:" + afterbalance + "元");
+		}
 	}
-	
-	
-	protected boolean processcreditforload(Intent intent) {
+
+	protected int processcreditforload(Intent intent) {
+		int loadresult = -13;
 		boolean openFlag = false;
-		String fci = pbocm.SelectdefaultApplet();
-		if(null == fci){
-			Log.i("LOAD", "【processcreditforload】:select err");
-			return false;
+		pbocmanager = PbocManager.getInstance();
+		if (pbocmanager == null)
+			return loadresult;
+		String fci = pbocmanager.SelectdefaultApplet();
+		if (null == fci) {
+			Log.i(LOGTAG, "【processcreditforload】:select err");
+			return loadresult;
 		}
 		returnMsg = Utils.bytesFromHexStringNoBlank(fci);
 
 		openFlag = true;
-		Log.i("LOAD", "【start】" + fci);
-		
-		balance = pbocm.getBalance();
-		Log.i("LOAD", "【balacne】"+balance);
+		Log.i(LOGTAG, "【start】" + fci);
+
+		balance = pbocmanager.getBalance();
+		Log.i(LOGTAG, "【balacne】" + balance);
 
 		try {
 			// 判断PDOL
 			boolean pdolFlag = false;
 			if (openFlag && continueFlag) {
 				pdolFlag = hasPDOL();
-				Log.i("LOAD", "【hasPDOL】"+pdolFlag);
+				Log.i(LOGTAG, "【hasPDOL】" + pdolFlag);
 
 			} else {
 				continueFlag = false;
+			}
+			// 步骤1--PDOL
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
 			}
 
 			// 重发select指令，获取pdol
 			if (!pdolFlag && continueFlag) {
 				reSendSelect();
-				Log.i("LOAD", "【reSelect】:done");
+				Log.i(LOGTAG, "【reSelect】:done");
 			}
-			
+			// 步骤2--reselect
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
+			}
+
 			// 解析select指令响应，获得PDOL数据
 			List<String> pdoldata = null;
 			if (continueFlag) {
 				pdoldata = pasePdol();
 			}
-			
+
+			// 步骤3--get PDOL
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
+			}
+
 			// 根据PDOL组织GPO指令
 			byte[] gpodata = null;
 			if (continueFlag && pdoldata != null) {
 				gpodata = getGPOData(pdoldata);
-				Log.i("LOAD", "【GPO】:data-->"+Utils.toHexString(gpodata));
+				Log.i(LOGTAG, "【GPO】:data-->" + Utils.toHexString(gpodata));
 
 			} else {
 				continueFlag = false;
+			}
+			// 步骤4--get get GPO CMD
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
 			}
 
 			// 发送GPO指令并解析指令响应
 			if (continueFlag && gpodata != null) {
 				sendGPOData(gpodata);
-				Log.i("LOAD", "【GPO】:done");
+				Log.i(LOGTAG, "【GPO】:done");
 			} else {
 				continueFlag = false;
+			}
+			// 步骤5--send GPO CMD
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
 			}
 
 			// 发送Read Record指令并解析指令响应
 			if (continueFlag) {
 				sendAndParseRR();
-				Log.i("LOAD", "【readRecode】:done");
+				Log.i(LOGTAG, "【readRecode】:done");
+			}
+			// 步骤6--read record
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
 			}
 
 			// 得到标签95的值
 			if (continueFlag) {
 				TVR = parseTag95();
 			}
+			// 步骤7--get TVR
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
+			}
 
 			// 终端行为分析（充值为联机交易不做终端行为分析）
+			// 步骤8--
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
+			}
 
 			// 获取GENERATE AC 指令 做卡片行为分析
 			String acCommond = null;
 			if (continueFlag) {
 				acCommond = getGACCommond();
-				Log.i("LOAD", "【GAC】:data-->"+acCommond);
+				Log.i(LOGTAG, "【GAC】:data-->" + acCommond);
 
+			}
+			// 步骤9--get GAC
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
 			}
 
 			// 发送GENERATE AC 指令并解析响应
 			if (continueFlag && acCommond != null) {
 				sendAndParseAC(acCommond);
-				Log.i("LOAD", "【GAC】:done");
+				Log.i(LOGTAG, "【GAC】:done");
 			} else {
 				continueFlag = false;
 			}
-			
+			// 步骤10--send GAC CMD
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
+			}
+
 			df = new DecimalFormat(pattern);
 			BigDecimal balancestr = new BigDecimal(balance);
 
-			EditText inamount = (EditText) findViewById(R.id.ev_credit_for_load_inputmoney);
+			EditText inamount = (EditText) findViewById(R.id.et_credit_for_load_inputmoney);
 			BigDecimal amount = new BigDecimal(inamount.getText().toString());
-			
-			String strBalance = df.format(balancestr.multiply(new BigDecimal("100")));
+
+			String strBalance = df.format(balancestr.multiply(new BigDecimal(
+					"100")));
 			String strAAM = df.format(amount.multiply(new BigDecimal("100")));
-			Log.i("LOAD",  "【ATC】:"+tag9F36value
-						+"\n【ECBalance】:"+strBalance
-						+"\n【AAM】:"+strAAM
-						+"\n【AC】:"+tag9F26value);
+			Log.i(LOGTAG, "【ATC】:" + tag9F36value + "\n【ECBalance】:"
+					+ strBalance + "\n【AAM】:" + strAAM + "\n【AC】:"
+					+ tag9F26value);
 
-
-		/**
-		 * 计算发卡行脚本
-		 */
-			Map<String,String> res = getIssuerData(tag9F36value,strBalance,strAAM,tag9F26value);
+			/**
+			 * 计算发卡行脚本
+			 */
+			Map<String, String> res = getIssuerData(tag9F36value, strBalance,
+					strAAM, tag9F26value);
 			authData = res.get("IssAuthData");
 			issuerScript = res.get("IssuerScript");
-			
+
 			// 外部认证
 			if (continueFlag) {
 				externalAuth();
+			}
+			// 步骤11--external auth
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
 			}
 
 			// 交易结束处理
 			if (continueFlag) {
 				doLoadEnd();
 			}
+			// 步骤12--GAC
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
+			}
 
 			// 发卡行脚本执行
 			if (continueFlag) {
 				exeCardBankScript();
 			}
-			//执行发卡行脚本成功
-			String afterbalance = pbocm.getBalance();
-			showUploadLogDialog("充值成功","当前余额:"+afterbalance+"元");
+			// 步骤13--issuer script
+			if (continueFlag) {
+				loadresult++;
+			} else {
+				return loadresult;
+			}
 		} catch (Exception e) {
 			Logger.e(TAG, "充值时异常", e);
 		}
-		return true;
+		return loadresult;
 	}
-	
-	
+
 	/**
 	 * 执行发卡行脚本
 	 * 
@@ -343,9 +478,9 @@ public class ActivityLoad extends Activity {
 			scriptExeResult = "0";
 			for (int i = 0; i < scriptStr.size(); i++) { // 循环执行所有脚本
 				byte[] result = null;
-				result = Utils
-							.bytesFromHexStringNoBlank(pbocm.sendAPDU(Utils
-							.bytesFromHexStringNoBlank(scriptStr.get(i))));
+				result = Utils.bytesFromHexStringNoBlank(pbocmanager
+						.sendAPDU(Utils.bytesFromHexStringNoBlank(scriptStr
+								.get(i))));
 
 				String resultStr = Utils.toHexStringNoBlank(result);
 				Logger.v(TAG, "执行发卡行脚本命令" + scriptStr.get(i) + "反馈内容："
@@ -397,7 +532,7 @@ public class ActivityLoad extends Activity {
 		// 授权金额9F02
 		if (tag8Dvalue.contains(getResources().getString(R.string.tag9F02))) {
 			df = new DecimalFormat(pattern);
-			EditText inamount = (EditText) findViewById(R.id.ev_credit_for_load_inputmoney);
+			EditText inamount = (EditText) findViewById(R.id.et_credit_for_load_inputmoney);
 			BigDecimal amount = new BigDecimal(inamount.getText().toString());
 			sbEndACData
 					.append(df.format(amount.multiply(new BigDecimal("100"))));
@@ -457,9 +592,9 @@ public class ActivityLoad extends Activity {
 		sbEndACComd.append("00");
 		Logger.v(TAG, "交易结束处理指令:" + sbEndACComd.toString());
 		try {
-			returnMsg7 = Utils
-						.bytesFromHexStringNoBlank(pbocm.sendAPDU(Utils
-						.bytesFromHexStringNoBlank(sbEndACComd.toString())));
+			returnMsg7 = Utils.bytesFromHexStringNoBlank(pbocmanager
+					.sendAPDU(Utils.bytesFromHexStringNoBlank(sbEndACComd
+							.toString())));
 
 			Logger.v(TAG, "交易结束处理指令反馈内容：" + Utils.toHexString(returnMsg7));
 			if (returnMsg7.length <= 2) {
@@ -482,6 +617,7 @@ public class ActivityLoad extends Activity {
 	 * @throws Exception
 	 */
 	private void externalAuth() throws Exception {
+		boolean result = true;
 		Logger.v(TAG, "外部认证");
 		StringBuffer sbAuthCommond = new StringBuffer();
 		sbAuthCommond.append(getResources().getString(R.string.externalAuth));
@@ -500,9 +636,9 @@ public class ActivityLoad extends Activity {
 
 		try {
 			byte[] authResult = null;
-			authResult = Utils
-						.bytesFromHexStringNoBlank(pbocm.sendAPDU(Utils
-						.bytesFromHexStringNoBlank(sbAuthCommond.toString())));
+			authResult = Utils.bytesFromHexStringNoBlank(pbocmanager
+					.sendAPDU(Utils.bytesFromHexStringNoBlank(sbAuthCommond
+							.toString())));
 			if (authResult.length == 0 || authResult == null) {
 				Logger.v(TAG, "外部认证指令反馈为空，外部认证失败");
 				byte5 = "C0";// 发卡行认证失败，重置TVR btye5
@@ -531,7 +667,7 @@ public class ActivityLoad extends Activity {
 			throw e;
 		}
 	}
-	
+
 	/**
 	 * 发送GENERATE AC指令并解析响应
 	 * 
@@ -542,14 +678,16 @@ public class ActivityLoad extends Activity {
 	private void sendAndParseAC(String commond) throws Exception {
 		Logger.v(TAG, "发送GENERATE AC指令");
 		try {
-			returnMsg6 = Utils
-					.bytesFromHexStringNoBlank(pbocm.sendAPDU(Utils
-						.bytesFromHexStringNoBlank(commond)));
+			returnMsg6 = Utils.bytesFromHexStringNoBlank(pbocmanager
+					.sendAPDU(Utils.bytesFromHexStringNoBlank(commond)));
 
-			Logger.d(TAG, "sendAndParseAC方法中returnMsg6=" + Utils.toHexStringNoBlank(returnMsg6));
+			Logger.d(
+					TAG,
+					"sendAndParseAC方法中returnMsg6="
+							+ Utils.toHexStringNoBlank(returnMsg6));
 			if (returnMsg6.length > 2) {
 				String hexStrGAC = Utils.toHexStringNoBlank(returnMsg6);
-				hexStrGAC = hexStrGAC.substring(0,hexStrGAC.length()-4);
+				hexStrGAC = hexStrGAC.substring(0, hexStrGAC.length() - 4);
 				Logger.v(TAG, "GENERATE AC指令反馈成功，反馈内容：" + hexStrGAC);
 				// 密文信息数据
 				tag9F27value = hexStrGAC.substring(4, 6);
@@ -600,7 +738,7 @@ public class ActivityLoad extends Activity {
 			// 授权金额9F02
 			if (tag8Cvalue.contains(getResources().getString(R.string.tag9F02))) {
 				df = new DecimalFormat(pattern);
-				EditText inamount = (EditText) findViewById(R.id.ev_credit_for_load_inputmoney);
+				EditText inamount = (EditText) findViewById(R.id.et_credit_for_load_inputmoney);
 				BigDecimal amount = new BigDecimal(inamount.getText()
 						.toString());
 				sbACData.append(df.format(amount
@@ -700,9 +838,8 @@ public class ActivityLoad extends Activity {
 		try {
 			// 终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器[9F13]值
 			Logger.v(TAG, "终端发送取数据（GET DATA）命令80CA9F1300读取卡片中的上次联机ATC寄存器值");
-			returnMsg5 = Utils.bytesFromHexStringNoBlank(pbocm.sendAPDU(Utils
-						.bytesFromHexStringNoBlank("80CA9F1300")));
-
+			returnMsg5 = Utils.bytesFromHexStringNoBlank(pbocmanager
+					.sendAPDU(Utils.bytesFromHexStringNoBlank("80CA9F1300")));
 
 		} catch (NumberFormatException e) {
 			Logger.e(TAG, "终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器值", e);
@@ -788,7 +925,9 @@ public class ActivityLoad extends Activity {
 						sbrr.append(getResources().getString(R.string.RRLC));
 						byte[] rrcom = Utils.bytesFromHexStringNoBlank(sbrr
 								.toString());
-						returnMsg3 = Utils.bytesFromHexStringNoBlank(pbocm.sendAPDU(rrcom));
+						returnMsg3 = Utils
+								.bytesFromHexStringNoBlank(pbocmanager
+										.sendAPDU(rrcom));
 
 						String str3 = Utils.toHexStringNoBlank(returnMsg3);
 						if (returnMsg3.length > 2) {// 成功响应
@@ -867,8 +1006,9 @@ public class ActivityLoad extends Activity {
 						sbrr.append(getResources().getString(R.string.RRLC));
 						byte[] rrcom = Utils.bytesFromHexStringNoBlank(sbrr
 								.toString());
-						returnMsg4 = Utils.bytesFromHexStringNoBlank(pbocm.sendAPDU(rrcom));
-
+						returnMsg4 = Utils
+								.bytesFromHexStringNoBlank(pbocmanager
+										.sendAPDU(rrcom));
 
 						String str4 = Utils.toHexStringNoBlank(returnMsg4);
 						if (returnMsg4.length > 2) {
@@ -1125,7 +1265,7 @@ public class ActivityLoad extends Activity {
 					for (int j = start; j <= end; j++) {
 
 						// 如果不存在0302，那么8C（CDOL1）等标签就去0204中读
-						
+
 						P1 = df.format(j);
 						StringBuffer sbrr = new StringBuffer();
 						sbrr.append(getResources().getString(R.string.RRCLA));
@@ -1135,8 +1275,9 @@ public class ActivityLoad extends Activity {
 						sbrr.append(getResources().getString(R.string.RRLC));
 						byte[] rrcom = Utils.bytesFromHexStringNoBlank(sbrr
 								.toString());
-						returnMsg03 = Utils.bytesFromHexStringNoBlank(pbocm.sendAPDU(rrcom));
-
+						returnMsg03 = Utils
+								.bytesFromHexStringNoBlank(pbocmanager
+										.sendAPDU(rrcom));
 
 						String str03 = Utils.toHexStringNoBlank(returnMsg03);
 						if (returnMsg03.length > 2) {
@@ -1272,7 +1413,9 @@ public class ActivityLoad extends Activity {
 						byte[] rrcom = Utils.bytesFromHexStringNoBlank(sbrr
 								.toString());
 
-						returnMsg04 = Utils.bytesFromHexStringNoBlank(pbocm.sendAPDU(rrcom));
+						returnMsg04 = Utils
+								.bytesFromHexStringNoBlank(pbocmanager
+										.sendAPDU(rrcom));
 
 						String str04 = Utils.toHexStringNoBlank(returnMsg04);
 						if (returnMsg04.length > 2) {
@@ -1344,14 +1487,13 @@ public class ActivityLoad extends Activity {
 	 * 
 	 * @param gpocom
 	 *            GPO指令
-	 * @throws Exception 
+	 * @throws Exception
 	 */
 	private void sendGPOData(byte[] gpocom) throws Exception {
 		Logger.v(TAG, "发送GPO指令");
 		try {
-				returnMsg2 = Utils.bytesFromHexStringNoBlank(
-						pbocm.sendAPDU(gpocom));
-
+			returnMsg2 = Utils.bytesFromHexStringNoBlank(pbocmanager
+					.sendAPDU(gpocom));
 
 			String hexString = Utils.toHexStringNoBlank(returnMsg2);
 			Logger.v(TAG, "GPO指令反馈内容：" + hexString);
@@ -1416,7 +1558,7 @@ public class ActivityLoad extends Activity {
 				// 授权金额
 				if (getResources().getString(R.string.tag9F02).equals(pd)) {
 					df = new DecimalFormat(pattern);
-					EditText inamount = (EditText) findViewById(R.id.ev_credit_for_load_inputmoney);
+					EditText inamount = (EditText) findViewById(R.id.et_credit_for_load_inputmoney);
 					BigDecimal amount = new BigDecimal(inamount.getText()
 							.toString());
 					datastr.append(df.format(amount.multiply(new BigDecimal(
@@ -1591,11 +1733,9 @@ public class ActivityLoad extends Activity {
 	private void reSendSelect() {
 		Logger.v(TAG, "重发select指令获得PDOL数据");
 		try {
-			returnMsg1 = Utils.bytesFromHexStringNoBlank(
-						pbocm.sendAPDU(
-							Utils.bytesFromHexStringNoBlank(
-									getResources().getString(
-											R.string.selectcmd))));
+			returnMsg1 = Utils.bytesFromHexStringNoBlank(pbocmanager
+					.sendAPDU(Utils.bytesFromHexStringNoBlank(getResources()
+							.getString(R.string.selectcmd))));
 
 			if (returnMsg1.length > 2) {
 				Logger.v(TAG, "重发select指令响应成功");
@@ -1630,7 +1770,7 @@ public class ActivityLoad extends Activity {
 		} catch (Exception e) {
 			Logger.e(TAG, "重发select指令异常", e);
 			continueFlag = false;
-			showUploadLogDialog("提示", "初始化充值界面异常\n将发送错误报告。");
+			showDialog("提示", "初始化充值界面异常\n将发送错误报告。");
 		}
 	}
 
@@ -1657,8 +1797,10 @@ public class ActivityLoad extends Activity {
 								pdolmsg = Utils.bytesFromHexStringNoBlank(Util
 										.toHexString(list1.get(j).getValue(),
 												0, list1.get(j).length));
-								Logger.v(TAG,
-										"PDOL数据:" + Utils.toHexStringNoBlank(pdolmsg));
+								Logger.v(
+										TAG,
+										"PDOL数据:"
+												+ Utils.toHexStringNoBlank(pdolmsg));
 								break;
 							}
 						}
@@ -1688,11 +1830,11 @@ public class ActivityLoad extends Activity {
 		} catch (NumberFormatException e) {
 			Logger.e(TAG, "解析PDOL数据失败", e);
 			continueFlag = false;
-			showUploadLogDialog("提示", "初始化充值界面异常\n解析PDOL数据失败，将发送错误报告。");
+			showDialog("提示", "初始化充值界面异常\n解析PDOL数据失败，将发送错误报告。");
 		} catch (Exception e) {
 			Logger.e(TAG, "解析PDOL数据失败", e);
 			continueFlag = false;
-			showUploadLogDialog("提示", "初始化充值界面异常\n解析PDOL数据失败，将发送错误报告。");
+			showDialog("提示", "初始化充值界面异常\n解析PDOL数据失败，将发送错误报告。");
 		}
 		return pdolFlag;
 	}
@@ -1701,95 +1843,104 @@ public class ActivityLoad extends Activity {
 	 * 
 	 * 方法描述：显示上传日志的对话框
 	 */
-	private void showUploadLogDialog(String title, String context) {
-		AlertDialog.Builder builder = new AlertDialog.Builder(
-				ActivityLoad.this)
-		.setTitle(title)
-		.setMessage(context);
+	private void showDialog(String title, String context) {
+		AlertDialog.Builder builder = new AlertDialog.Builder(ActivityLoad.this)
+				.setTitle(title).setMessage(context);
 		AlertDialog dialog = builder.show();
 	}
-	
-	private Map<String,String> getIssuerData(String atc,String balance,String aam,String ac) throws Exception{
-		byte[] key = ByteUtil.hexStringToByteArray("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
-		
+
+	private Map<String, String> getIssuerData(String atc, String balance,
+			String aam, String ac) throws Exception {
+		byte[] key = ByteUtil
+				.hexStringToByteArray("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+
 		String pbocATC = new String(atc);//
 		String pbocECBalance = new String(balance);//
 		String pbocAAM = new String(aam);//
 		String pbocAC = new String(ac);//
 
-		Map<String,String> res = new HashMap<String, String>();
-		//生成分散数据
+		Map<String, String> res = new HashMap<String, String>();
+		// 生成分散数据
 		String disperseData = "";
-		for(int i=0;i<16-pbocATC.length();i++){
-			disperseData+="0";
+		for (int i = 0; i < 16 - pbocATC.length(); i++) {
+			disperseData += "0";
 		}
-		disperseData+=pbocATC;
+		disperseData += pbocATC;
 		byte[] tempbyte = ByteUtil.hexStringToByteArray(pbocATC);
-		for(int i=0; i<tempbyte.length; i++){
+		for (int i = 0; i < tempbyte.length; i++) {
 			tempbyte[i] = (byte) (tempbyte[i] ^ 0xFF);
 		}
 		String tempStr = ByteUtil.byteArrayToHexString(tempbyte);
 		String disperseData2 = "";
-		for(int i=0;i<16-tempStr.length();i++){
-			disperseData2+="0";
+		for (int i = 0; i < 16 - tempStr.length(); i++) {
+			disperseData2 += "0";
 		}
-		disperseData2+=tempStr;
-		//拼接分散数据
-		disperseData+=disperseData2;
-		System.out.println("密钥-->"+ByteUtil.byteArrayToHexString(key));
+		disperseData2 += tempStr;
+		// 拼接分散数据
+		disperseData += disperseData2;
+		System.out.println("密钥-->" + ByteUtil.byteArrayToHexString(key));
 		System.out.println("分散数据-->" + disperseData);
-		
-		//电子现金充值处理
-		//1.算出过程密钥
-		byte[] processKey = CryptographyUtil.des3_ECB_encryption(key, ByteUtil.hexStringToByteArray(disperseData));
-		System.out.println("过程密钥-->" + ByteUtil.byteArrayToHexString(processKey));
 
-		//2.生成脚本MAC计算输入数据
-		//04DA9F790A 0012  E2F6ED390FDB4755 000000000104      800000
-		// 固定值               ATC   应用密文                       圈存后的金额                     补位
-		
-		//算圈存后的总金额
-		
-		//按十进制运算
-		int pbocECBalanceTemp = Integer.parseInt(pbocECBalance); //电子现金余额
+		// 电子现金充值处理
+		// 1.算出过程密钥
+		byte[] processKey = CryptographyUtil.des3_ECB_encryption(key,
+				ByteUtil.hexStringToByteArray(disperseData));
+		System.out.println("过程密钥-->"
+				+ ByteUtil.byteArrayToHexString(processKey));
+
+		// 2.生成脚本MAC计算输入数据
+		// 04DA9F790A 0012 E2F6ED390FDB4755 000000000104 800000
+		// 固定值 ATC 应用密文 圈存后的金额 补位
+
+		// 算圈存后的总金额
+
+		// 按十进制运算
+		int pbocECBalanceTemp = Integer.parseInt(pbocECBalance); // 电子现金余额
 		int pbocAAMTemp = Integer.parseInt(pbocAAM);
-		
+
 		int countBalance = pbocECBalanceTemp + pbocAAMTemp;
 		String countBalanceStr = String.valueOf(countBalance);
 		String tempStr2 = "";
-		for(int i=0; i < 12-countBalanceStr.length(); i++){
-			tempStr2+="0";
+		for (int i = 0; i < 12 - countBalanceStr.length(); i++) {
+			tempStr2 += "0";
 		}
-		tempStr2+=countBalanceStr;
+		tempStr2 += countBalanceStr;
 		System.out.println("圈存后的余额-->" + tempStr2);
 		String pbocECBalanceCount = tempStr2;
-		String disperseData3 = "04DA9F790A" + pbocATC + pbocAC + pbocECBalanceCount + "800000";
+		String disperseData3 = "04DA9F790A" + pbocATC + pbocAC
+				+ pbocECBalanceCount + "800000";
 		System.out.println("算MAC数据-->" + disperseData3);
-		byte[] retMac = CryptographyUtil.singleDesPlus3DES(processKey, ByteUtil.hexStringToByteArray(disperseData3), ByteUtil.hexStringToByteArray("0000000000000000"));
-		System.out.println("\n计算出的MAC值-->" + ByteUtil.byteArrayToHexString(retMac));
-		if(retMac == null || retMac.length == 0){
+		byte[] retMac = CryptographyUtil.singleDesPlus3DES(processKey,
+				ByteUtil.hexStringToByteArray(disperseData3),
+				ByteUtil.hexStringToByteArray("0000000000000000"));
+		System.out.println("\n计算出的MAC值-->"
+				+ ByteUtil.byteArrayToHexString(retMac));
+		if (retMac == null || retMac.length == 0) {
 			throw new Exception("返回的MAC值为空");
 		}
 		String retMacStr = ByteUtil.byteArrayToHexString(retMac);
 		String newRetMacStr = retMacStr.substring(0, 8);
-		//圈存脚本
-		String retScript ="72199F1804000000018610" + "04DA9F790A" + pbocECBalanceCount + newRetMacStr + "00";
+		// 圈存脚本
+		String retScript = "72199F1804000000018610" + "04DA9F790A"
+				+ pbocECBalanceCount + newRetMacStr + "00";
 
-		//算出认证数据
-//		arpc 计算
-//		 取授权应答码（成功为3030） 6个字节0x00，和ARQC做异或运算
+		// 算出认证数据
+		// arpc 计算
+		// 取授权应答码（成功为3030） 6个字节0x00，和ARQC做异或运算
 		// 3030000000000000
-		//应用密文（AC） <==> ARQC
+		// 应用密文（AC） <==> ARQC
 		byte[] dataByte = ByteUtil.hexStringToByteArray("3030000000000000");
 		byte[] arqcByte = ByteUtil.hexStringToByteArray(pbocAC);
 		byte[] authData = new byte[arqcByte.length];
-		for(int i=0;i<dataByte.length;i++){
+		for (int i = 0; i < dataByte.length; i++) {
 			authData[i] = (byte) (dataByte[i] ^ arqcByte[i]);
 		}
 
-		byte[] issAuthData = CryptographyUtil.des3_ECB_encryption(processKey, authData);
-		String retIssAuthDataStr = ByteUtil.byteArrayToHexString(issAuthData) + "3030";
-		
+		byte[] issAuthData = CryptographyUtil.des3_ECB_encryption(processKey,
+				authData);
+		String retIssAuthDataStr = ByteUtil.byteArrayToHexString(issAuthData)
+				+ "3030";
+
 		res.put("IssAuthData", retIssAuthDataStr);
 		System.out.println("认证数据-->" + retIssAuthDataStr);
 		res.put("IssuerScript", retScript);

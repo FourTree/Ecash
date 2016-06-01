@@ -43,7 +43,7 @@ public class FeliCa {
 
 	@Override
 	public String toString() {
-		return Util.toHexString(data, 0, data.length);
+		return NfcUtil.toHexString(data, 0, data.length);
 	}
 
 	public final static class IDm extends FeliCa {
@@ -54,11 +54,11 @@ public class FeliCa {
 		}
 
 		public final String getManufactureCode() {
-			return Util.toHexString(data, 0, 2);
+			return NfcUtil.toHexString(data, 0, 2);
 		}
 
 		public final String getCardIdentification() {
-			return Util.toHexString(data, 2, 6);
+			return NfcUtil.toHexString(data, 2, 6);
 		}
 
 		public boolean isEmpty() {
@@ -79,11 +79,11 @@ public class FeliCa {
 		}
 
 		public final String getIcCode() {
-			return Util.toHexString(data, 0, 2);
+			return NfcUtil.toHexString(data, 0, 2);
 		}
 
 		public final String getMaximumResponseTime() {
-			return Util.toHexString(data, 2, 6);
+			return NfcUtil.toHexString(data, 2, 6);
 		}
 	}
 

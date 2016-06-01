@@ -22,7 +22,7 @@ import java.util.Arrays;
 import android.content.res.Resources;
 import android.util.Log;
 
-import cn.z.ecash.nfc.Util;
+import cn.z.ecash.nfc.NfcUtil;
 import cn.z.ecash.nfc.CardManager;
 import cn.z.ecash.nfc.Iso7816;
 
@@ -58,27 +58,27 @@ final class EcashCard extends PbocCard {
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				short FCIoff = Util.findValueOffByTag((short) 0xA5, 
+				short FCIoff = NfcUtil.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(FCIoff < 0)
 					return  null;
 				
-				short FCIdefoff = Util.findValueOffByTag((short) 0xBF0C, 
+				short FCIdefoff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
 				if(FCIoff < 0)
 					return  null;
 				
-				short Contentoff = Util.findValueOffByTag((short) 0x61, 
+				short Contentoff = NfcUtil.findValueOffByTag((short) 0x61, 
 						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
 				if(Contentoff < 0)
 					return  null;
 				
-				short DFAIDoff = Util.findValueOffByTag((short) 0x4F, 
+				short DFAIDoff = NfcUtil.findValueOffByTag((short) 0x4F, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(DFAIDoff < 0)
 					return  null;
 				
-				short APPlaboff = Util.findValueOffByTag((short) 0x50, 
+				short APPlaboff = NfcUtil.findValueOffByTag((short) 0x50, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(APPlaboff < 0)
 					return  null;
@@ -89,7 +89,7 @@ final class EcashCard extends PbocCard {
 			}else{
 				return null;
 			}
-			Log.i("ECASH", "【AID】:" + Util.toHexString(DFAID, 0, DFAID.length));
+			Log.i("ECASH", "【AID】:" + NfcUtil.toHexString(DFAID, 0, DFAID.length));
 
 			
 			Iso7816.Response INFO, CASH,ATC;
@@ -111,25 +111,25 @@ final class EcashCard extends PbocCard {
 					if((byte)0x81 == tbyte[toff++]){
 						toff++;
 					}
-					toff = Util.findValueOffByTag((short) 0xA5, 
+					toff = NfcUtil.findValueOffByTag((short) 0xA5, 
 							tbyte,(short)toff,(short)tbyte[toff-1]);
 					if(toff < 0)
 						return  null;
 					int toffA5 = toff;
 
 					//PDOL
-					toff = Util.findValueOffByTag((short) 0x9F38, 
+					toff = NfcUtil.findValueOffByTag((short) 0x9F38, 
 							tbyte,(short)toff,(short)tbyte[toff-1]);
 					if(toff < 0)
 						return  null;
 					
 					
-					toff = Util.findValueOffByTag((short) 0xBF0C, 
+					toff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
 							tbyte,(short)toffA5,(short)tbyte[toffA5-1]);
 					if(toff < 0)
 						return  null;
 					
-					toff = Util.findValueOffByTag((short) 0x9F4D, 
+					toff = NfcUtil.findValueOffByTag((short) 0x9F4D, 
 							tbyte,(short)toff,(short)tbyte[toff-1]);
 					if(toff < 0)
 						return  null;
@@ -157,7 +157,7 @@ final class EcashCard extends PbocCard {
 				// read 日志格式
 				/*--------------------------------------------------------------*/
 				byte[] logdol = tag.getData(0x9F4F).getBytes();
-				Log.i("ECASH", "【LOGFOMAT】:"+Util.toHexString(logdol, 0, logdol.length));
+				Log.i("ECASH", "【LOGFOMAT】:"+NfcUtil.toHexString(logdol, 0, logdol.length));
 
 				
 				/*--------------------------------------------------------------*/
@@ -173,7 +173,7 @@ final class EcashCard extends PbocCard {
 					for(int i=0;i<lognum;i++){
 						tlogbyte = LOG.get(i);
 						if(tlogbyte != null){
-							Log.i("ECASH", "【LOG】:"+Util.toHexString(tlogbyte, 0,tlogbyte.length));
+							Log.i("ECASH", "【LOG】:"+NfcUtil.toHexString(tlogbyte, 0,tlogbyte.length));
 						}else{
 							Log.i("ECASH", "【LOG】:err-"+i);
 							break;
@@ -230,27 +230,27 @@ final class EcashCard extends PbocCard {
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				short FCIoff = Util.findValueOffByTag((short) 0xA5, 
+				short FCIoff = NfcUtil.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(FCIoff < 0)
 					return  null;
 				
-				short FCIdefoff = Util.findValueOffByTag((short) 0xBF0C, 
+				short FCIdefoff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
 				if(FCIoff < 0)
 					return  null;
 				
-				short Contentoff = Util.findValueOffByTag((short) 0x61, 
+				short Contentoff = NfcUtil.findValueOffByTag((short) 0x61, 
 						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
 				if(Contentoff < 0)
 					return  null;
 				
-				short DFAIDoff = Util.findValueOffByTag((short) 0x4F, 
+				short DFAIDoff = NfcUtil.findValueOffByTag((short) 0x4F, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(DFAIDoff < 0)
 					return  null;
 				
-				short APPlaboff = Util.findValueOffByTag((short) 0x50, 
+				short APPlaboff = NfcUtil.findValueOffByTag((short) 0x50, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(APPlaboff < 0)
 					return  null;
@@ -261,7 +261,7 @@ final class EcashCard extends PbocCard {
 			}else{
 				return null;
 			}
-			Log.i("ECASH", "【AID】:" + Util.toHexString(DFAID, 0, DFAID.length));
+			Log.i("ECASH", "【AID】:" + NfcUtil.toHexString(DFAID, 0, DFAID.length));
 
 
 			Iso7816.Response CASH;
@@ -281,8 +281,8 @@ final class EcashCard extends PbocCard {
 			/*--------------------------------------------------------------*/
 			CASH = tag.sendCmd("80CA9F7900");
 			Log.i("ECASH", "【BLANCE】:" + CASH.toString());
-			int n = Util.BCDtoInt(CASH.getBytes(), 5, 4);
-			tbalance = Util.toAmountString(n / 100.0f);
+			int n = NfcUtil.BCDtoInt(CASH.getBytes(), 5, 4);
+			tbalance = NfcUtil.toAmountString(n / 100.0f);
 		}
 		return tbalance;
 
@@ -303,7 +303,7 @@ final class EcashCard extends PbocCard {
 		final byte[] d = data.getBytes();
 		short toff = 0;
 		short slen = 0;
-		Log.i("ECASH", "【f_parseInfo_d】:"+Util.toHexString(d, 0,d.length));
+		Log.i("ECASH", "【f_parseInfo_d】:"+NfcUtil.toHexString(d, 0,d.length));
 		if((byte)0x70 == (byte)d[0]){
 			if((byte)0x81 == (byte)d[1]){
 				slen = (short)((short)0x00FF & (short)d[2]);
@@ -316,11 +316,11 @@ final class EcashCard extends PbocCard {
 			Log.i("ECASH", "【f_parseInfo_toff】:"+toff);
 
 			// PAN
-			short serloff = Util.findValueOffByTag((short) 0x5A, d,(short)toff,slen);
+			short serloff = NfcUtil.findValueOffByTag((short) 0x5A, d,(short)toff,slen);
 			Log.i("ECASH", "【f_parseInfo_serloff】:"+serloff);
 
 			if(serloff > 0){
-				serl = Util.toHexString(d, serloff, d[serloff-1]);
+				serl = NfcUtil.toHexString(d, serloff, d[serloff-1]);
 			}
 			if(("F").equals(serl.substring(serl.length() - 1))){
 				serl = 	serl.substring(0,serl.length() - 1);
@@ -341,8 +341,8 @@ final class EcashCard extends PbocCard {
 			return;
 		} 
 
-		int n = Util.BCDtoInt(data.getBytes(), 5, 4);
-		cash = Util.toAmountString(n / 100.0f);
+		int n = NfcUtil.BCDtoInt(data.getBytes(), 5, 4);
+		cash = NfcUtil.toAmountString(n / 100.0f);
 	}
 	
 
@@ -401,7 +401,7 @@ final class EcashCard extends PbocCard {
 				r.append("<br />--------------");
 
 			for (final byte[] v : log) {
-				final int cash = Util.BCDtoInt(v, logmoneyoffset+2, 4);
+				final int cash = NfcUtil.BCDtoInt(v, logmoneyoffset+2, 4);
 				if (cash > 0) {
 					r.append("<br />").append(
 							String.format("20%02X.%02X.%02X,%02X:%02X:%02X,",
@@ -411,7 +411,7 @@ final class EcashCard extends PbocCard {
 					final char t = (v[logtypeoffset] == (byte)0x60 || v[logtypeoffset] == (byte)0x63) ? '+'
 							: '-';
 
-					r.append(t).append(Util.toAmountString(cash / 100.0f));
+					r.append(t).append(NfcUtil.toAmountString(cash / 100.0f));
 
 //					final int over = Util.toInt(v, 2, 3);
 //					if (over > 0)

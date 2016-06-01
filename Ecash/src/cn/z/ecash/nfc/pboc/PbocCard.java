@@ -26,7 +26,7 @@ import android.annotation.SuppressLint;
 import android.content.res.Resources;
 import android.nfc.tech.IsoDep;
 import android.util.Log;
-import cn.z.ecash.nfc.Util;
+import cn.z.ecash.nfc.NfcUtil;
 import cn.z.ecash.nfc.CardManager;
 import cn.z.ecash.nfc.Iso7816;
 
@@ -126,9 +126,9 @@ import cn.z.ecash.nfc.Iso7816;
 
 		final byte[] d = data.getBytes();
 		if (dec < 1 || dec > 10) {
-			serl = Util.toHexString(d, 10, 10);
+			serl = NfcUtil.toHexString(d, 10, 10);
 		} else {
-			final int sn = bigEndian ? Util.toIntR(d, 19, dec) : Util.toInt(d,
+			final int sn = bigEndian ? NfcUtil.toIntR(d, 19, dec) : NfcUtil.toInt(d,
 					20 - dec, dec);
 
 			serl = String.format("%d", 0xFFFFFFFFL & sn);
@@ -182,7 +182,7 @@ import cn.z.ecash.nfc.Iso7816;
 				r.append("<br />--------------");
 
 			for (final byte[] v : log) {
-				final int cash = Util.toInt(v, 5, 4);
+				final int cash = NfcUtil.toInt(v, 5, 4);
 				if (cash > 0) {
 					r.append("<br />").append(
 							String.format("%02X%02X.%02X.%02X %02X:%02X ",
@@ -192,15 +192,15 @@ import cn.z.ecash.nfc.Iso7816;
 					final char t = (v[9] == TRANS_CSU || v[9] == TRANS_CSU_CPX) ? '-'
 							: '+';
 
-					r.append(t).append(Util.toAmountString(cash / 100.0f));
+					r.append(t).append(NfcUtil.toAmountString(cash / 100.0f));
 
-					final int over = Util.toInt(v, 2, 3);
+					final int over = NfcUtil.toInt(v, 2, 3);
 					if (over > 0)
 						r.append(" [o:")
-								.append(Util.toAmountString(over / 100.0f))
+								.append(NfcUtil.toAmountString(over / 100.0f))
 								.append(']');
 
-					r.append(" [").append(Util.toHexString(v, 10, 6))
+					r.append(" [").append(NfcUtil.toHexString(v, 10, 6))
 							.append(']');
 				}
 			}
@@ -215,11 +215,11 @@ import cn.z.ecash.nfc.Iso7816;
 			return;
 		}
 
-		int n = Util.toInt(data.getBytes(), 0, 4);
+		int n = NfcUtil.toInt(data.getBytes(), 0, 4);
 		if (n > 100000 || n < -100000)
 			n -= 0x80000000;
 
-		cash = Util.toAmountString(n / 100.0f);
+		cash = NfcUtil.toAmountString(n / 100.0f);
 	}
 	
 	protected void parseData(String ptag,Iso7816.Response data) {
@@ -230,8 +230,8 @@ import cn.z.ecash.nfc.Iso7816;
 		byte[] d = data.getBytes();
 		if(("ATC".equals(ptag))){
 			//ATC,tag = 9F36,len = 02.
-			int cnt = Util.toInt(d, 3, 2);
-			count = Util.toIntegerString(cnt);
+			int cnt = NfcUtil.toInt(d, 3, 2);
+			count = NfcUtil.toIntegerString(cnt);
 		}
 	}
 }

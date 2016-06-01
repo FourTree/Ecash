@@ -25,26 +25,31 @@
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:text="@string/str_btn_get_cardnumber"/>
-        
-   <Button
-        android:id="@+id/btn_credit_for_load"
-        android:layout_marginTop="192dp"
-        android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:text="@string/str_btn_credit_for_load" />
             
    <Button
         android:id="@+id/btn_get_ATC"
-        android:layout_marginTop="256dp"
+        android:layout_marginTop="192dp"
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:text="@string/str_btn_get_ATC" />
-
-   <TextView
-       android:id="@+id/tv_debugshow"
-       android:layout_marginTop="320dp"
+   <Button
+        android:id="@+id/btn_credit_for_load"
+        android:layout_marginTop="256dp"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="@string/str_btn_credit_for_load" />
+   <Button
+       android:id="@+id/bt_quickpass"
        android:layout_width="match_parent"
        android:layout_height="64dp"
+       android:layout_marginTop="320dp"
+       android:text="@string/str_btn_quick_pass" />
+   
+   <TextView
+       android:id="@+id/tv_debugshow"
+       android:layout_width="match_parent"
+       android:layout_height="64dp"
+       android:layout_marginTop="384dp"
        android:text="@string/str_tx_debugshow" />
 
 </FrameLayout>

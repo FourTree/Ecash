@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -13,33 +12,30 @@
         android:text="Input money to load:" />
 
     <EditText
-        android:id="@+id/ev_credit_for_load_inputmoney"
+        android:id="@+id/et_credit_for_load_inputmoney"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="64dp"
         android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
         android:layout_below="@+id/tv_credit_for_load_inputmoney"
         android:ems="10"
-        android:inputType="numberDecimal" >
-
-        <requestFocus />
-    </EditText>
-
-    <Button
-        android:id="@+id/btn_credit_for_load_ok"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_below="@+id/ev_credit_for_load_inputmoney"
-        android:layout_marginTop="47dp"
-        android:text="OK" />
+        android:inputType="numberDecimal" />
 
     <TextView
         android:id="@+id/tv_showdebuginfo"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="64dp"
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true"
-        android:layout_below="@+id/ev_credit_for_load_inputmoney"
+        android:layout_below="@+id/btn_credit_for_load_ok"
         android:text="@string/str_tx_debugshow" />
+
+    <Button
+        android:id="@+id/btn_credit_for_load_ok"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/et_credit_for_load_inputmoney"
+        android:text="OK" />
 
 </RelativeLayout>
