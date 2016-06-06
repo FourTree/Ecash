@@ -1,12 +1,24 @@
 package cn.z.ecash;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.security.KeyFactory;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.Security;
+import java.security.spec.RSAPublicKeySpec;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import javax.crypto.Cipher;
+
+import cn.z.ecash.commn.ByteUtil;
 import cn.z.ecash.commn.Logger;
 import cn.z.ecash.commn.TLVEntity;
 import cn.z.ecash.commn.Utils;
@@ -36,6 +48,11 @@ import android.widget.EditText;
 public class QuickPassActivity extends Activity {
 	private static final String LOGTAG = new String("QuickPass");
 	private static final String TAG = new String("QuickPass");
+
+	private static String CAPublickeyExp = new String("03");
+	private static String CAPublickeyModuls = new String(
+			"00EB374DFC5A96B71D2863875EDA2EAFB96B1B439D3ECE0B1826A2672EEEFA7990286776F8BD989A15141A75C384DFC14FEF9243AAB32707659BE9E4797A247C2F0B6D99372F384AF62FE23BC54BCDC57A9ACD1D5585C303F201EF4E8B806AFB809DB1A3DB1CD112AC884F164A67B99C7D6E5A8A6DF1D3CAE6D7ED3D5BE725B2DE4ADE23FA679BF4EB15A93D8A6E29C7FFA1A70DE2E54F593D908A3BF9EBBD760BBFDC8DB8B54497E6C5BE0E4A4DAC29E5");
+
 	private NfcAdapter nfcAdapter;
 	private PendingIntent pendingIntent;
 	private Resources res;
@@ -44,6 +61,31 @@ public class QuickPassActivity extends Activity {
 	private static final char[] HEX_DIGITS = { '0', '1', '2', '3', '4', '5',
 			'6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 	private String tag9F37value; // 终端不可预知数据
+	private String RRAUTHDATA;
+
+	// private String tag90value; //
+	// private String tag9F32value; //
+	// private String tag92value; //
+	// private String tag8Fvalue; //
+	// private String tag9F4Bvalue; //
+	// private String tag9F5Dvalue; //
+	// private String tag5F24value; //
+	// private String tag5Avalue; //
+	// private String tag9F07value; //
+	// private String tag8Evalue; //
+	// private String tag9F0Dvalue; //
+	// private String tag9F0Evalue; //
+	// private String tag9F0Fvalue; //
+	// private String tag5F28value; //
+	// private String tag9F46value; //
+	// private String tag9F47value; //
+	// private String tag9F48value; //
+	// private String tag93value; //
+	// private String tag5F25value; //
+	// private String tag9F4Avalue; //
+	// private String tag5F74value; //
+
+	private Map<String, String> RRDataList = new HashMap();
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -175,19 +217,20 @@ public class QuickPassActivity extends Activity {
 				toff++;
 			}
 			short aipoff = NfcUtil.findValueOffByTag((short) 0x82, gporesbytes,
-					(short) toff, (short) gporesbytes[toff-1]);
-			if(aipoff < 0){
+					(short) toff, (short) gporesbytes[toff - 1]);
+			if (aipoff < 0) {
 				Log.i(LOGTAG, "【processforquickpass】:AIP not found");
 				return purchaseresult;
 			}
-			strAIP = GPOres.substring(aipoff*2,aipoff*2+4);
+			strAIP = GPOres.substring(aipoff * 2, aipoff * 2 + 4);
 			short afloff = NfcUtil.findValueOffByTag((short) 0x94, gporesbytes,
-					(short) toff, (short) gporesbytes[toff-1]);
-			if(aipoff < 0){
+					(short) toff, (short) gporesbytes[toff - 1]);
+			if (aipoff < 0) {
 				Log.i(LOGTAG, "【processforquickpass】:AFL not found");
-				return purchaseresult; 
+				return purchaseresult;
 			}
-			strAFL = GPOres.substring(afloff*2,afloff*2+gporesbytes[afloff-1]*2);
+			strAFL = GPOres.substring(afloff * 2, afloff * 2
+					+ gporesbytes[afloff - 1] * 2);
 
 		} else {
 			strAIP = GPOres.substring(4, 8);
@@ -198,10 +241,102 @@ public class QuickPassActivity extends Activity {
 
 		sendAndParseRR(strAFL);
 		Log.i(LOGTAG, "【processforquickpass】:read record");
-
+		RSAAuth(strAIP);
 		String balance = pbocmanager.getBalance();
 		showDialog("消费成功", "当前余额：" + balance + "元.");
 		return purchaseresult;
+	}
+
+	private void RSAAuth(String pAIP) throws Exception {
+		String IPKCertDec = RSADecrypt(CAPublickeyModuls, CAPublickeyExp,
+				RRDataList.get(getResources().getString(R.string.tag90)));
+		if (!IPKCertDec.startsWith("6A")) {
+			Log.i(LOGTAG, "【RSAAuth】:发卡行公钥证书解密错误，不是以6A开始\n" + IPKCertDec);
+			return;
+		}
+		if (!IPKCertDec.endsWith("BC")) {
+			Log.i(LOGTAG, "【RSAAuth】:发卡行公钥证书解密错误，不是以BC结尾\n" + IPKCertDec);
+			return;
+		}
+		Log.i(LOGTAG, "【RSAAuth】:IPK公钥证书明文\n" + IPKCertDec);
+		int certlen = IPKCertDec.length();
+		String IPKHash_Card = IPKCertDec.substring((certlen - 42),
+				(certlen - 2));
+		String IPKModuls =IPKCertDec.substring(30, (certlen - 42))+ RRDataList.get(getResources().getString(R.string.tag92));
+		String IPKExp = RRDataList.get(getResources().getString(R.string.tag9F32));
+		String IPKHashData = IPKCertDec.substring(2, (certlen - 42))
+				+ RRDataList.get(getResources().getString(R.string.tag92))
+				+ IPKExp;
+		Log.i(LOGTAG, "【RSAAuth】:IPK公钥证书Hash元数据\n" + IPKHashData);
+		String tmpHash = getSha1(IPKHashData);
+		if (!tmpHash.equals(IPKHash_Card)) {
+			Log.i(LOGTAG, "【RSAAuth】:发卡行公钥证书Hash检验失败\n期望值:" + IPKHash_Card
+					+ "\n实际值：" + tmpHash);
+			return;
+		}
+		Log.i(LOGTAG, "【RSAAuth】:发卡行公钥证书Hash检验成功\n期望值:" + IPKHash_Card
+				+ "\n实际值：" + tmpHash);
+		
+		String ICCPKCertDec = RSADecrypt(IPKModuls, IPKExp,
+				RRDataList.get(getResources().getString(R.string.tag9F46)));
+		if (!ICCPKCertDec.startsWith("6A")) {
+			Log.i(LOGTAG, "【RSAAuth】:IC卡公钥证书解密错误，不是以6A开始\n" + IPKCertDec);
+			return;
+		}
+		if (!ICCPKCertDec.endsWith("BC")) {
+			Log.i(LOGTAG, "【RSAAuth】:IC卡公钥证书解密错误，不是以BC结尾\n" + IPKCertDec);
+			return;
+		}
+		Log.i(LOGTAG, "【RSAAuth】:IC卡公钥证书明文\n" + ICCPKCertDec);
+		certlen = ICCPKCertDec.length();
+		String ICCPKHash_Card = ICCPKCertDec.substring((certlen - 42),
+				(certlen - 2));
+		String ICCPKModuls =ICCPKCertDec.substring(42, (certlen - 42))+ RRDataList.get(getResources().getString(R.string.tag9F48));
+		String ICCPKExp = RRDataList.get(getResources().getString(R.string.tag9F47));
+		
+		String ICCPKHashData = ICCPKCertDec.substring(2, (certlen - 42))
+				+ RRDataList.get(getResources().getString(R.string.tag9F48))
+				+ ICCPKExp
+				+ RRAUTHDATA
+				+ pAIP;
+		
+		Log.i(LOGTAG, "【RSAAuth】:IC卡公钥证书Hash元数据\n" + ICCPKHashData);
+		tmpHash = getSha1(ICCPKHashData);
+		if (!tmpHash.equals(ICCPKHash_Card)) {
+			Log.i(LOGTAG, "【RSAAuth】:IC卡公钥证书Hash检验失败\n期望值:" + ICCPKHash_Card
+					+ "\n实际值：" + tmpHash);
+			return;
+		}
+		Log.i(LOGTAG, "【RSAAuth】:IC卡公钥证书Hash检验成功\n期望值:" + ICCPKHash_Card
+				+ "\n实际值：" + tmpHash);
+		
+		String DDADataDec = RSADecrypt(ICCPKModuls, ICCPKExp,
+				RRDataList.get(getResources().getString(R.string.tag9F4B)));
+		if (!ICCPKCertDec.startsWith("6A")) {
+			Log.i(LOGTAG, "【RSAAuth】:DDA签名解密错误，不是以6A开始\n" + DDADataDec);
+			return;
+		}
+		if (!ICCPKCertDec.endsWith("BC")) {
+			Log.i(LOGTAG, "【RSAAuth】:DDA签名解密错误，不是以BC结尾\n" + DDADataDec);
+			return;
+		}
+		Log.i(LOGTAG, "【RSAAuth】:DDA签名明文\n" + DDADataDec);
+		certlen = DDADataDec.length();
+		String DDAHash_Card = DDADataDec.substring((certlen - 42),
+				(certlen - 2));
+		
+		String DDAHashData = DDADataDec.substring(2, (certlen - 42))
+				+ tag9F37value;
+		
+		Log.i(LOGTAG, "【RSAAuth】:DDA签名Hash元数据\n" + DDAHashData);
+		tmpHash = getSha1(DDAHashData);
+		if (!tmpHash.equals(DDAHash_Card)) {
+			Log.i(LOGTAG, "【RSAAuth】:DDA签名Hash检验失败\n期望值:" + DDAHash_Card
+					+ "\n实际值：" + tmpHash);
+			return;
+		}
+		Log.i(LOGTAG, "【RSAAuth】:DDA签名Hash检验成功\n期望值:" + DDAHash_Card
+				+ "\n实际值：" + tmpHash);
 	}
 
 	/**
@@ -212,6 +347,10 @@ public class QuickPassActivity extends Activity {
 	private void sendAndParseRR(String pAFL) throws Exception {
 		Logger.v(TAG, "发送read record指令");
 		DecimalFormat df;
+		String tmpvalue;
+		String tmptag;
+		RRDataList.clear();
+		RRAUTHDATA = "";
 		try {
 			for (int i = 0; i < pAFL.length() - 4;) {
 				df = new DecimalFormat("00");
@@ -219,7 +358,7 @@ public class QuickPassActivity extends Activity {
 				byte[] AFLbytes = NfcUtil.hexStringToByteArray(hexString);
 				int start = AFLbytes[1];
 				int end = AFLbytes[2];
-				int authdata = AFLbytes[3];
+				int authdatarr = AFLbytes[3];
 				AFLbytes[0] |= 0x04;
 				String P1 = "";
 				String P2 = NfcUtil.toHexString(AFLbytes).substring(0, 2);
@@ -239,28 +378,24 @@ public class QuickPassActivity extends Activity {
 							.sendAPDU(rrcom));
 
 					String str3 = Utils.toHexStringNoBlank(record);
+					if(authdatarr > 0){
+						if("81".equals(str3.substring(2,4))){
+							RRAUTHDATA += str3.substring(6,(str3.length()-4));
+						}else{
+							RRAUTHDATA += str3.substring(4,(str3.length()-4));
+						}
+						authdatarr --;
+					}
 					if (record.length > 2) {// 成功响应
 						List<TLVEntity> list = Utils.getNodes(str3);
 						Logger.v(TAG, "读取应用数据 SFI = " + SFI + ",RecordNum = "
 								+ P1);
-						// for (int k = 0; k < list.size(); k++) {
-						// if (getResources()
-						// .getString(R.string.tag57).equals(
-						// Util.intToHexString(list
-						// .get(k).getTag()))) {
-						// tag57value = NfcUtil.toHexString(
-						// list.get(k).getValue(), 0,
-						// list.get(k).length);
-						// }
-						// if (getResources().getString(
-						// R.string.tag9F1F).equals(
-						// Util.intToHexString(list.get(k)
-						// .getTag()))) {
-						// tag9F1Fvalue = NfcUtil.toHexString(list
-						// .get(k).getValue(), 0, list
-						// .get(k).length);
-						// }
-						// }
+						for (int k = 0; k < list.size(); k++) {
+							tmptag = Util.intToHexString(list.get(k).getTag());
+							tmpvalue = NfcUtil.toHexString(list.get(k)
+									.getValue(), 0, list.get(k).length);
+							RRDataList.put(tmptag, tmpvalue);
+						}
 					} else {
 						Logger.v(TAG, "读应用数据 SFI = " + SFI + ",RecordNum = "
 								+ P1 + "指令反馈失败，反馈结果为空");
@@ -271,10 +406,15 @@ public class QuickPassActivity extends Activity {
 				}
 				i = i + 8;
 			}
+			Logger.i(TAG, "记录文件信息：\n" + RRDataList.toString());
 		} catch (Exception e) {
 			Logger.e(TAG, "发送read record指令并解析响应 异常", e);
 			throw e;
 		}
+	}
+
+	private int checkACType() {
+		return 0;
 	}
 
 	/**
@@ -317,6 +457,7 @@ public class QuickPassActivity extends Activity {
 		gpodata.append(getResources().getString(R.string.GPOP2));
 		String gpodatalen = "";
 		String pdoldatastrlen = "";
+		tag9F37value = "";
 
 		if (list != null) {
 			StringBuffer datastr = new StringBuffer();
@@ -571,5 +712,54 @@ public class QuickPassActivity extends Activity {
 		showDialog(new String("QuickPass"),
 				new String("ATC=" + pbocmanager.getTag("9F36")));
 
+	}
+
+	public static String RSADecrypt(String pkeymoduls, String pkeyexp,
+			String encdata) throws Exception {
+		Log.i(LOGTAG, "【RSADecrypt】\nmoduls:"+pkeymoduls
+				+"\nexp:"+pkeyexp
+				+"\ndata:"+encdata);
+
+		byte[] pubkeymoduls = ByteUtil.hexStringToByteArray("00"+pkeymoduls);
+		byte[] pubkeyexp = ByteUtil.hexStringToByteArray(pkeyexp);
+
+		BigInteger b1 = new BigInteger(pubkeymoduls);
+		BigInteger b2 = new BigInteger(pubkeyexp);
+
+		KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+		RSAPublicKeySpec keyspec = new RSAPublicKeySpec(b1, b2);
+		PublicKey pubkey = keyFactory.generatePublic(keyspec);
+
+		// 对数据解密密
+		Cipher cipher = Cipher.getInstance(keyFactory.getAlgorithm()
+				+ "/None/NoPadding", getProvierName());
+
+		cipher.init(Cipher.DECRYPT_MODE, pubkey);
+
+		byte[] decodedata = cipher.doFinal(ByteUtil
+				.hexStringToByteArray(encdata));
+		return ByteUtil.byteArrayToHexString(decodedata);
+	}
+
+	private static String PROVIDER_NAME = "BC";
+	private static boolean ISDECIDE = false;
+
+	public static String getProvierName() {
+		if (ISDECIDE && Security.getProvider(PROVIDER_NAME) != null) {
+			return PROVIDER_NAME;
+		} else {
+			Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+			ISDECIDE = true;
+			return PROVIDER_NAME;
+		}
+
+	}
+
+	public static String getSha1(String data) throws Exception {
+		MessageDigest digest = java.security.MessageDigest.getInstance("SHA-1");
+		digest.update(ByteUtil.hexStringToByteArray(data));
+		byte[] ipkmd = digest.digest();
+		String localIPKHash = ByteUtil.byteArrayToHexString(ipkmd);
+		return localIPKHash;
 	}
 }
