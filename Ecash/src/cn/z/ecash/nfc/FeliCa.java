@@ -15,6 +15,8 @@ Additional permission under GNU GPL version 3 section 7 */
 
 package cn.z.ecash.nfc;
 
+import cn.z.ecash.commn.*;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,7 +45,7 @@ public class FeliCa {
 
 	@Override
 	public String toString() {
-		return NfcUtil.toHexString(data, 0, data.length);
+		return Utils.toHexString(data, 0, data.length);
 	}
 
 	public final static class IDm extends FeliCa {
@@ -54,11 +56,11 @@ public class FeliCa {
 		}
 
 		public final String getManufactureCode() {
-			return NfcUtil.toHexString(data, 0, 2);
+			return Utils.toHexString(data, 0, 2);
 		}
 
 		public final String getCardIdentification() {
-			return NfcUtil.toHexString(data, 2, 6);
+			return Utils.toHexString(data, 2, 6);
 		}
 
 		public boolean isEmpty() {
@@ -79,11 +81,11 @@ public class FeliCa {
 		}
 
 		public final String getIcCode() {
-			return NfcUtil.toHexString(data, 0, 2);
+			return Utils.toHexString(data, 0, 2);
 		}
 
 		public final String getMaximumResponseTime() {
-			return NfcUtil.toHexString(data, 2, 6);
+			return Utils.toHexString(data, 2, 6);
 		}
 	}
 

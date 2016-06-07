@@ -74,15 +74,15 @@ public class TLVEntity extends TLVNode  {
 		
 		if (this.singleNode) {
 			debugText.append("[T]");
-			debugText.append(Util.intToHexString(this.tag));
+			debugText.append(Utils.intToHexString(this.tag));
 			debugText.append(",[V]");
-			debugText.append(Util.toHexString(this.value, 0,this.length));
+			debugText.append(Utils.toHexString(this.value, 0,this.length));
 			debugText.append(",("+TAGInformation.getTagInformation(this.tag) + ")");
 //			Log.d(TAG, debugText.toString());
 			System.out.println(debugText.toString());
 		} else {
 			debugText.append("[T]");
-			debugText.append(Util.intToHexString(this.tag));
+			debugText.append(Utils.intToHexString(this.tag));
 			debugText.append(",("+TAGInformation.getTagInformation(this.tag) + ")");
 			
 //			Log.d(TAG, debugText.toString());
@@ -106,9 +106,9 @@ public class TLVEntity extends TLVNode  {
 		if (this.singleNode) {
 			debugText.append(depTap);
 			debugText.append("[T]");
-			debugText.append(Util.intToHexString(this.tag));
+			debugText.append(Utils.intToHexString(this.tag));
 			debugText.append(",[V]");
-			debugText.append(Util.toHexString(this.value, 0,this.length));
+			debugText.append(Utils.toHexString(this.value, 0,this.length));
 			debugText.append(",("+TAGInformation.getTagInformation(this.tag) + ")");
 			
 //			Log.d(TAG, debugText.toString());
@@ -117,7 +117,7 @@ public class TLVEntity extends TLVNode  {
 		} else {
 			debugText.append(depTap);
 			debugText.append("[T]");
-			debugText.append(Util.intToHexString(this.tag));
+			debugText.append(Utils.intToHexString(this.tag));
 			debugText.append(",("+TAGInformation.getTagInformation(this.tag) + ")");
 			
 //			Log.d(TAG, debugText.toString());

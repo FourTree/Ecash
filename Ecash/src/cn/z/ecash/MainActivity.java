@@ -3,16 +3,15 @@ package cn.z.ecash;
 import java.util.HashMap;
 import java.util.Map;
 
+import cn.z.ecash.commn.Utils;
 import cn.z.ecash.nfc.CardManager;
 import cn.z.ecash.nfc.PbocManager;
-import cn.z.ecash.nfc.NfcUtil;
 import android.support.v4.app.Fragment;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.res.Resources;
-import android.content.res.Resources.Theme;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
 import android.os.Parcelable;
@@ -210,22 +209,22 @@ public class MainActivity extends Activity {
 			return;
 		}
 		String strn = pbocmanager.sendAPDU("00B2011400");
-		byte[] tempbytes = NfcUtil.hexStringToByteArray(strn);
+		byte[] tempbytes = Utils.hexStringToByteArray(strn);
 		int toff = 0;
 		if ((byte) 0x70 == tempbytes[toff++]) {
 			if ((byte) 0x81 == tempbytes[toff++]) {
 				toff++;
 			}
-			toff = NfcUtil.findValueOffByTag((short) 0x5A, tempbytes,
+			toff = Utils.findValueOffByTag((short) 0x5A, tempbytes,
 					(short) toff, (short) tempbytes[toff - 1]);
 			if (toff < 0) {
 				strn = pbocmanager.sendAPDU("00B2011C00");
-				tempbytes = NfcUtil.hexStringToByteArray(strn);
+				tempbytes = Utils.hexStringToByteArray(strn);
 				if ((byte) 0x70 == tempbytes[toff++]) {
 					if ((byte) 0x81 == tempbytes[toff++]) {
 						toff++;
 					}
-					toff = NfcUtil.findValueOffByTag((short) 0x5A, tempbytes,
+					toff = Utils.findValueOffByTag((short) 0x5A, tempbytes,
 							(short) toff, (short) tempbytes[toff - 1]);
 					if (toff < 0) {
 						toff = -1;
@@ -236,7 +235,7 @@ public class MainActivity extends Activity {
 		if(toff < 0){
 			strn = null;
 		}else{
-			strn = NfcUtil.toHexString(tempbytes, toff, tempbytes[toff - 1]);
+			strn = Utils.toHexString(tempbytes, toff, tempbytes[toff - 1]);
 			int numberend = strn.indexOf("F");
 			if(numberend > 0){
 				strn = strn.substring(0,numberend);

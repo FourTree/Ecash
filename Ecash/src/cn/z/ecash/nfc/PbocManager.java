@@ -16,7 +16,7 @@ Additional permission under GNU GPL version 3 section 7 */
 package cn.z.ecash.nfc;
 
 import java.util.Map;
-
+import cn.z.ecash.commn.*;
 import cn.z.ecash.nfc.pboc.PbocCard;
 import android.annotation.SuppressLint;
 import android.content.IntentFilter;
@@ -135,7 +135,12 @@ import android.util.Log;
 		pbocinstance  = null;
 		return  ;
 	}
-	
+	public String getAID(){
+		if(DFAID == null)
+			return null;
+		else
+			return Utils.toHexString(DFAID, 0, DFAID.length);
+	}
 	public boolean SelectCard(){
 		byte[] tbyte = null;
 		int toff = 0;
@@ -151,27 +156,27 @@ import android.util.Log;
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				short FCIoff = NfcUtil.findValueOffByTag((short) 0xA5, 
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(FCIoff < 0)
 					return  false;
 				
-				short FCIdefoff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
 				if(FCIoff < 0)
 					return  false;
 				
-				short Contentoff = NfcUtil.findValueOffByTag((short) 0x61, 
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
 						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
 				if(Contentoff < 0)
 					return  false;
 				
-				short DFAIDoff = NfcUtil.findValueOffByTag((short) 0x4F, 
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(DFAIDoff < 0)
 					return  false;
 				
-				short APPlaboff = NfcUtil.findValueOffByTag((short) 0x50, 
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(APPlaboff < 0)
 					return  false;
@@ -182,7 +187,7 @@ import android.util.Log;
 			}else{
 				return false;
 			}
-			Log.i(LOGTAG, "【AID】:" + NfcUtil.toHexString(DFAID, 0, DFAID.length));
+			Log.i(LOGTAG, "【AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
 		}
 			return true;
 	}
@@ -214,27 +219,27 @@ import android.util.Log;
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				short FCIoff = NfcUtil.findValueOffByTag((short) 0xA5, 
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(FCIoff < 0)
 					return  false;
 				
-				short FCIdefoff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
 				if(FCIoff < 0)
 					return  false;
 				
-				short Contentoff = NfcUtil.findValueOffByTag((short) 0x61, 
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
 						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
 				if(Contentoff < 0)
 					return  false;
 				
-				short DFAIDoff = NfcUtil.findValueOffByTag((short) 0x4F, 
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(DFAIDoff < 0)
 					return  false;
 				
-				short APPlaboff = NfcUtil.findValueOffByTag((short) 0x50, 
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(APPlaboff < 0)
 					return  false;
@@ -245,7 +250,7 @@ import android.util.Log;
 			}else{
 				return false;
 			}
-			Log.i(LOGTAG, "【AID】:" + NfcUtil.toHexString(DFAID, 0, DFAID.length));
+			Log.i(LOGTAG, "【AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
 		}
 		/*--------------------------------------------------------------*/
 		// select Main Application
@@ -263,25 +268,25 @@ import android.util.Log;
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				toff = NfcUtil.findValueOffByTag((short) 0xA5, 
+				toff = Utils.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(toff < 0)
 					return  false;
 				int toffA5 = toff;
 
 				//PDOL
-				toff = NfcUtil.findValueOffByTag((short) 0x9F38, 
+				toff = Utils.findValueOffByTag((short) 0x9F38, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(toff < 0)
 					return  false;
 				
 				
-				toff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
+				toff = Utils.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)toffA5,(short)tbyte[toffA5-1]);
 				if(toff < 0)
 					return  false;
 				
-				toff = NfcUtil.findValueOffByTag((short) 0x9F4D, 
+				toff = Utils.findValueOffByTag((short) 0x9F4D, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(toff < 0)
 					return  false;
@@ -308,27 +313,27 @@ import android.util.Log;
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				short FCIoff = NfcUtil.findValueOffByTag((short) 0xA5, 
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(FCIoff < 0)
 					return  false;
 				
-				short FCIdefoff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
 				if(FCIoff < 0)
 					return  false;
 				
-				short Contentoff = NfcUtil.findValueOffByTag((short) 0x61, 
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
 						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
 				if(Contentoff < 0)
 					return  false;
 				
-				short DFAIDoff = NfcUtil.findValueOffByTag((short) 0x4F, 
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(DFAIDoff < 0)
 					return  false;
 				
-				short APPlaboff = NfcUtil.findValueOffByTag((short) 0x50, 
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(APPlaboff < 0)
 					return  false;
@@ -339,7 +344,7 @@ import android.util.Log;
 			}else{
 				return false;
 			}
-			Log.i(LOGTAG, "【AID】:" + NfcUtil.toHexString(DFAID, 0, DFAID.length));
+			Log.i(LOGTAG, "【AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
 		}
 		/*--------------------------------------------------------------*/
 		// select Main Application
@@ -357,25 +362,25 @@ import android.util.Log;
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				toff = NfcUtil.findValueOffByTag((short) 0xA5, 
+				toff = Utils.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(toff < 0)
 					return  false;
 				int toffA5 = toff;
 
 				//PDOL
-				toff = NfcUtil.findValueOffByTag((short) 0x9F38, 
+				toff = Utils.findValueOffByTag((short) 0x9F38, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(toff < 0)
 					return  false;
 				
 				
-				toff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
+				toff = Utils.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)toffA5,(short)tbyte[toffA5-1]);
 				if(toff < 0)
 					return  false;
 				
-				toff = NfcUtil.findValueOffByTag((short) 0x9F4D, 
+				toff = Utils.findValueOffByTag((short) 0x9F4D, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(toff < 0)
 					return  false;
@@ -405,27 +410,27 @@ import android.util.Log;
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				short FCIoff = NfcUtil.findValueOffByTag((short) 0xA5, 
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(FCIoff < 0)
 					return  null;
 				
-				short FCIdefoff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
 				if(FCIoff < 0)
 					return  null;
 				
-				short Contentoff = NfcUtil.findValueOffByTag((short) 0x61, 
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
 						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
 				if(Contentoff < 0)
 					return  null;
 				
-				short DFAIDoff = NfcUtil.findValueOffByTag((short) 0x4F, 
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(DFAIDoff < 0)
 					return  null;
 				
-				short APPlaboff = NfcUtil.findValueOffByTag((short) 0x50, 
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(APPlaboff < 0)
 					return  null;
@@ -436,7 +441,7 @@ import android.util.Log;
 			}else{
 				return null;
 			}
-			Log.i(LOGTAG, "【SelectdefaultApplet.AID】:" + NfcUtil.toHexString(DFAID, 0, DFAID.length));
+			Log.i(LOGTAG, "【SelectdefaultApplet.AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
 		}
 		/*--------------------------------------------------------------*/
 		// select Main Application
@@ -478,27 +483,27 @@ import android.util.Log;
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				short FCIoff = NfcUtil.findValueOffByTag((short) 0xA5, 
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(FCIoff < 0)
 					return  null;
 				
-				short FCIdefoff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
 				if(FCIoff < 0)
 					return  null;
 				
-				short Contentoff = NfcUtil.findValueOffByTag((short) 0x61, 
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
 						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
 				if(Contentoff < 0)
 					return  null;
 				
-				short DFAIDoff = NfcUtil.findValueOffByTag((short) 0x4F, 
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(DFAIDoff < 0)
 					return  null;
 				
-				short APPlaboff = NfcUtil.findValueOffByTag((short) 0x50, 
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
 						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
 				if(APPlaboff < 0)
 					return  null;
@@ -509,7 +514,7 @@ import android.util.Log;
 			}else{
 				return null;
 			}
-			Log.i(LOGTAG, "【AID】:" + NfcUtil.toHexString(DFAID, 0, DFAID.length));
+			Log.i(LOGTAG, "【AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
 		}
 		/*--------------------------------------------------------------*/
 		// select Main Application
@@ -527,25 +532,25 @@ import android.util.Log;
 				if((byte)0x81 == tbyte[toff++]){
 					toff++;
 				}
-				toff = NfcUtil.findValueOffByTag((short) 0xA5, 
+				toff = Utils.findValueOffByTag((short) 0xA5, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(toff < 0)
 					return  null;
 				int toffA5 = toff;
 
 				//PDOL
-				toff = NfcUtil.findValueOffByTag((short) 0x9F38, 
+				toff = Utils.findValueOffByTag((short) 0x9F38, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(toff < 0)
 					return  null;
 				
 				
-				toff = NfcUtil.findValueOffByTag((short) 0xBF0C, 
+				toff = Utils.findValueOffByTag((short) 0xBF0C, 
 						tbyte,(short)toffA5,(short)tbyte[toffA5-1]);
 				if(toff < 0)
 					return  null;
 				
-				toff = NfcUtil.findValueOffByTag((short) 0x9F4D, 
+				toff = Utils.findValueOffByTag((short) 0x9F4D, 
 						tbyte,(short)toff,(short)tbyte[toff-1]);
 				if(toff < 0)
 					return  null;
@@ -576,8 +581,8 @@ import android.util.Log;
 			return null;
 		} 
 
-		int n = NfcUtil.BCDtoInt(resbalance.getBytes(), 5, 4);
-		strbalance = NfcUtil.toAmountString(n / 100.0f);
+		int n = Utils.BCDtoInt(resbalance.getBytes(), 5, 4);
+		strbalance = Utils.toAmountString(n / 100.0f);
 		return strbalance;
 	}
 	

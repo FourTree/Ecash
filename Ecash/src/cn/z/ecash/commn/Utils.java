@@ -41,11 +41,7 @@ import android.widget.Toast;
  * @version $Revision: 1.1.1.1 $
  */
 public class Utils {
-	private static String LOG_DIR = "log";
-	
-	private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-	
-    private static final char[] HEX_DIGITS =
+	private static final char[] HEX_DIGITS =
     {
 	'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
     };
@@ -188,7 +184,7 @@ public class Utils {
 		try {
 			tlvEntity = TLVEntity.unpacket_entity(temp, 0, temp.length - 2);
 		} catch (TLVParserException e) {
-			Logger.e("getNodes", "解析TLV出错", e);
+			Log.e("getNodes", "解析TLV出错", e);
 			tlvEntity = null;
 		}
 
@@ -233,146 +229,258 @@ public class Utils {
 		return;
 	}
 	
-//    /**
-//     * 
-//     * 方法描述：获取上传的日志文件
-//     * @return
-//     */
-//    public static ArrayList<String> getLogPathList()
-//    {
-//    	ArrayList<String> filePath = new ArrayList<String>();
-//		//获取所有错误日志文件
-//		filePath.addAll(getLogList());
-//		filePath.addAll(getAppLogList());
-//		Log.d("logFileNum", filePath.size() + " 个log文件");
-//        return filePath;
-//    }
-    
-//    // 获取app错误日志
-//    public static ArrayList<String> getAppLogList() {
-//		// 保证上传两个大于10K的日志文件。
-//		// 例外，本身没有大于10K的日志。
-//		ArrayList<String> filePath = new ArrayList<String>(); 
-//		// 获取插件日志
-//		String getAppLogDir = getAppLogDir();
-//		if (!TextUtils.isEmpty(getAppLogDir)) {
-//			File[] files = new File(getAppLogDir).listFiles();
-//			boolean boo=true;
-//			int length=files.length - 1;
-//			while(boo){
-//				if (length > -1 && files[length].getName().contains(".log") && !files[length].getName().endsWith(".zip")){
-//					
-//					try{
-//		            	if(files[length].isFile() && files[length].length()>Math.pow(10, 4)){//Math.pow(10, 4)  为10000，即伪10K，实际上不到10K了，你懂的
-//		                    String zipPath = files[length].getAbsolutePath()+".zip";
-//		                    ZipUtil.compress(files[length].getAbsolutePath(), zipPath);
-//		                    filePath.add(zipPath);
-//		            	}
-//		            }catch (IOException e){
-//		                Logger.e("DownloadUtil", e.getMessage(),e);
-//		            }
-//				}
-//				length--;//实现递归
-//				if(filePath.size()==2 || length==-1){
-//					boo=false;//如果获取到了两个大于10K的日志，退出循环。
-//				}
-//			}
-//		}
-//		return filePath;
-//    }
-    //获取插件错误日志
-    public static ArrayList<String> getLogList() {
-        ArrayList<String> filePath = null;
-        String logDir = getLogDir();
-        try
-        {
-	        if (!TextUtils.isEmpty(logDir))
-	        {
-	            filePath = new ArrayList<String>();
-	            File file = new File(logDir);
-	            File[] files = file.listFiles();
-	            // 当日志文件为两个或两个以上
-	            if (null != files && files.length >= 1)
-	            {
-	            	
-	            	for(int i=0;i<files.length;i++){
-	            		if(files[i].getName().equals("icfcc_"+dateFormat.format(new Date())+".log")){
-	                            String zipPath = files[i].getAbsolutePath()+".zip";
-	                            ZipUtil.compress(files[i].getAbsolutePath(), zipPath);
-	                            filePath.add(zipPath);
-	                            break;
-	            		}
-	            	}
-	            }
-	        }
+	public static byte[] toBytes(int a) {
+        return new byte[] { (byte) (0x000000ff & (a >>> 24)),
+                        (byte) (0x000000ff & (a >>> 16)),
+                        (byte) (0x000000ff & (a >>> 8)), (byte) (0x000000ff & (a)) };
+}
+
+public static int toInt(byte[] b, int s, int n) {
+        int ret = 0;
+
+        final int e = s + n;
+        for (int i = s; i < e; ++i) {
+                ret <<= 8;
+                ret |= b[i] & 0xFF;
         }
-        catch (IOException e)
-        {
-        	Logger.e("DownloadUtil", e.getMessage(),e);
+        return ret;
+}
+
+public static int toIntR(byte[] b, int s, int n) {
+        int ret = 0;
+
+        for (int i = s; (i >= 0 && n > 0); --i, --n) {
+                ret <<= 8;
+                ret |= b[i] & 0xFF;
         }
-		return filePath;
-    }
-    
-    //获取插件log目录
-    public static String getLogDir() {
-        String path = null;
+        return ret;
+}
+
+public static int toInt(byte... b) {
+        int ret = 0;
+        for (final byte a : b) {
+                ret <<= 8;
+                ret |= a & 0xFF;
+        }
+        return ret;
+}
+
+public static String toHexString(byte[] d, int s, int n) {
+        final char[] ret = new char[n * 2];
+        final int e = s + n;
+
+        int x = 0;
+        for (int i = s; i < e; ++i) {
+                final byte v = d[i];
+                ret[x++] = HEX_DIGITS[0x0F & (v >> 4)];
+                ret[x++] = HEX_DIGITS[0x0F & v];
+        }
+        return new String(ret);
+}
+
+public static String intToHexString(int val) {
+        final char[] ret = new char[4];
+
+        int x = 0;
+        final int v1 = (val & 0xFF00) >> 8;
+        final int v2 = (val & 0x00FF);
         
-    	File logfile = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/IcfccLog");
-        
-        if(!logfile.exists()){
-        	Logger.d("DownloadUtil","插件日志文件不存在");
-        	return null;
+        if (v1 != 0) {
+                ret[x++] = HEX_DIGITS[0x0F & (v1 >> 4)];
+                ret[x++] = HEX_DIGITS[0x0F & v1];
         }
-        path = logfile.getPath();
-        return path;
-    }
-//    //获取applog目录
-//	public static String getAppLogDir() {
-//		String path = null;
-//		File logDir = null;
-//		if (AndroidVersionCheckUtils.hasFroyo()) {
-//			logDir = MKExternalOverFroyoUtils.getDiskCacheDir(MKApplication.getApplication().getApplicationContext(), LOG_DIR);
-//		} else {
-//			logDir = MKExternalUnderFroyoUtils.getDiskCacheDir(MKApplication.getApplication().getApplicationContext(), LOG_DIR);
-//		}
-//		if (logDir != null) {
-//			path = logDir.getPath();
-//		}
-//		return path;
-//	}
-    
+        
+        ret[x++] = HEX_DIGITS[0x0F & (v2 >> 4)];
+        ret[x++] = HEX_DIGITS[0x0F & v2];
+
+        return new String(ret,0,v1 != 0 ? 4 : 2);
+}
+
+public static String toHexStringR(byte[] d, int s, int n) {
+        final char[] ret = new char[n * 2];
+
+        int x = 0;
+        for (int i = s + n - 1; i >= s; --i) {
+                final byte v = d[i];
+                ret[x++] = HEX_DIGITS[0x0F & (v >> 4)];
+                ret[x++] = HEX_DIGITS[0x0F & v];
+        }
+        return new String(ret);
+}
+
+public static int parseInt(String txt, int radix, int def) {
+        int ret;
+        try {
+                ret = Integer.valueOf(txt, radix);
+        } catch (Exception e) {
+                ret = def;
+        }
+
+        return ret;
+}
+
+public static String byteToHexString(byte[] b) {
+ String hexString = "";
+ for (int i = 0; i < b.length; i++) {
+	 String hex = Integer.toHexString(b[i] & 0xFF);
+   if (hex.length() == 1) {
+     hex = '0' + hex;
+   }
+   hexString = hexString + hex.toUpperCase();
+ }
+ return hexString;
+}
+
+public static byte uniteBytes(byte src0, byte src1) {
+  byte _b0 = Byte.decode("0x" + new String(new byte[] { src0 }))
+    .byteValue();
+  _b0 = (byte) (_b0 << 4);
+  byte _b1 = Byte.decode("0x" + new String(new byte[] { src1 }))
+    .byteValue();
+  byte ret = (byte) (_b0 ^ _b1);
+  return ret;
+ }
+
+ 
+ public static byte[] HexString2Bytes(String src) {
+  byte[] ret = new byte[8];
+  byte[] tmp = src.getBytes();
+  for (int i = 0; i < 8; i++) {
+   ret[i] = uniteBytes(tmp[i * 2], tmp[i * 2 + 1]);
+  }
+  return ret;
+ }
+ 
+ ///////
+ /**
+	 * fail result for find operation.
+	 */
+	public static final short TAG_NOT_FOUND = -1;
 	
-//private ArrayList<String> getAppLog() {
-//		// 得到所有错误日志
-//		ArrayList<String> filePath = null;
-//		// 获取插件日志
-//		String logDir = LogUtils.getLogDir();
-//		if (!TextUtils.isEmpty(logDir)) {
-//			filePath = new ArrayList<String>();
-//			File file = new File(logDir);
-//			File[] files = file.listFiles();
-//				
-//			// 当日志文件为两个或两个以上
-//			if (null != files && files.length >= 2) {
-//				int length = files.length - 1;
-//				if (files[length].getName().contains(".log")) {
-//					filePath.add(files[length].getAbsolutePath());
-//				}
-//				if (files[length - 1].getName().contains(".log")) {
-//
-//					filePath.add(files[length - 1].getAbsolutePath());
-//				}
-//			}
-//			// 当只有一个日志文件时
-//			if (null != files && files.length == 1) {
-//				int length = files.length - 1;
-//				if (files[length].getName().contains(".log")) {
-//					filePath.add(files[length].getAbsolutePath());
-//					return filePath;
-//				}
-//			}
-//		}
-//		
-//		return filePath;
-//	}
+	public static int BCDtoInt(byte[] b, int s, int n) {
+		int ret = 0;
+		int tmp;
+
+		final int e = s + n;
+		for (int i = s; i < e; ++i) {
+			tmp = (b[i] >> 4) & 0x0F;
+			tmp = (tmp * 10) + (b[i] & 0x0F);
+			ret = ret* 100 +  tmp;
+		}
+		return ret;
+	}
+
+	public static String toAmountString(float value) {
+		return String.format("%.2f", value);
+	}
+	public static String toIntegerString(int value) {
+		return String.format("%d", value);
+	}
+	/**
+	 * 
+	 * @param tag
+	 * @param tlvList
+	 * @param offset
+	 * @param length
+	 * @return the offset of the value in buffer,not offset of the tag.
+	 */
+	public static short findValueOffByTag(short tag, byte[] tlvList,
+			short offset, short length) {
+		short i = offset;
+		length += offset;
+
+		while (i < length) {
+			// tag
+			short tagTemp = (short) (tlvList[i] & 0x00FF);
+			if ((short) (tagTemp & 0x001F) == 0x001F) {
+				i++;
+				tagTemp <<= 8;
+				tagTemp |= (short) (tlvList[i] & 0x00FF);
+			}
+			i++;
+
+			// length
+			if (tlvList[i] == (byte) 0x81) {
+				i++;
+			}
+			i++;
+
+			// value
+			if (tag == tagTemp) {
+				return i;
+			}
+
+			i += (tlvList[(short) (i - 1)] & 0x00FF);
+		}
+		return TAG_NOT_FOUND;
+	}
+	
+	public static short findandCopyValueByTag(short tag, byte[] tlvList,
+			short offset, short length, byte[] destbuflv) {
+		short toffset = 0;
+		toffset = findValueOffByTag(tag, tlvList, offset, length);
+		if (toffset == TAG_NOT_FOUND)
+			return TAG_NOT_FOUND;
+		else {
+			destbuflv[0] = tlvList[(short) (toffset - 1)];
+			System.arraycopy(tlvList, toffset, destbuflv, (short) 0x0001,
+					(short) destbuflv[0]);
+			return toffset;
+		}
+	}
+	
+	public static short GetTagInDOL(byte[] pDOL, short index) {
+		short toffset = 1;
+		short ttag = 0;
+		short pDOLlength = (short) pDOL[0];
+
+		if (index < 1)
+			return (short) -1;
+		while (index > 0) {
+			if (toffset > pDOLlength)
+				return (short) -1;
+			ttag = (short) (pDOL[toffset++] & 0x00FF);
+			if (((short) (ttag & 0x001F)) == ((short) 0x001F)) {
+				ttag <<= 8;
+				ttag |= (short) (pDOL[toffset++] & 0x00FF);
+			}
+
+			if (toffset > pDOLlength)
+				return (short) -1;
+
+			if ((short) pDOL[toffset] > (short) 0x0080) {
+				toffset += (short) ((short) pDOL[toffset] - (short) 0x0080);
+			} else {
+				toffset += 1;
+			}
+			index--;
+		}
+		return ttag;
+	}
+	
+	public static short arrayCopy(byte[] src, short srcOff, byte[] dest,short destOff, short length) {
+		System.arraycopy(src, srcOff, dest, destOff, length);
+		return (short) (destOff+length);
+	}
+	
+	public static byte[] hexStringToByteArray(String data) {
+		if (data == null || data.length() == 0 || (data.length() % 2) != 0) {
+			return null;
+		}
+		int len = data.length() / 2;
+		byte[] result = new byte[len];
+		String tmp;
+		for (int i = 0; i < len; i++) {
+			tmp = data.substring(i * 2, (i + 1) * 2);
+			try {
+				result[i] = (byte) Integer.parseInt(tmp, 16);
+			} catch (Exception e) {
+
+				result[i] = 0x00;
+			}
+		}
+		return result;
+	}
+	
+
 }

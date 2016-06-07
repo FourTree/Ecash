@@ -14,6 +14,7 @@ along with Wget.  If not, see <http://www.gnu.org/licenses/>.
 Additional permission under GNU GPL version 3 section 7 */
 
 package cn.z.ecash.nfc;
+import cn.z.ecash.commn.*;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -76,7 +77,7 @@ public class Iso7816 {
 
 	@Override
 	public String toString() {
-		return NfcUtil.toHexString(data, 0, data.length);
+		return Utils.toHexString(data, 0, data.length);
 	}
 
 	public final static class ID extends Iso7816 {
@@ -384,7 +385,7 @@ public class Iso7816 {
 		}
 		
 		public Response sendCmd(String cmd) {
-			return new Response(transceive(NfcUtil.hexStringToByteArray(cmd)));
+			return new Response(transceive(Utils.hexStringToByteArray(cmd)));
 		}
 		public Response sendCmd(byte[] cmd) {
 			return new Response(transceive(cmd));
@@ -484,12 +485,12 @@ public class Iso7816 {
 
 		public byte[] transceive(final byte[] cmd) {
 			try {
-				Log.i(LOGTAG, "【CMD】-->"+NfcUtil.toHexString(cmd));
+				Log.i(LOGTAG, "【CMD】-->"+Utils.toHexString(cmd));
 				byte[] res = nfcTag.transceive(cmd);
 				if(res == null){
 					Log.i(LOGTAG, "【RES】:response err");
 				}
-				Log.i(LOGTAG, "【RES】-->"+NfcUtil.toHexString(res));
+				Log.i(LOGTAG, "【RES】-->"+Utils.toHexString(res));
 				return res;
 			} catch (Exception e) {
 				Log.i(LOGTAG, "【RES】: send cmd exception");
