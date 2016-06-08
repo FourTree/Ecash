@@ -85,27 +85,6 @@ public class QuickPassActivity extends Activity {
 	private String tag9F37value; // 终端不可预知数据
 	private String RRAUTHDATA;
 
-	// private String tag90value; //
-	// private String tag9F32value; //
-	// private String tag92value; //
-	// private String tag8Fvalue; //
-	// private String tag9F4Bvalue; //
-	// private String tag9F5Dvalue; //
-	// private String tag5F24value; //
-	// private String tag5Avalue; //
-	// private String tag9F07value; //
-	// private String tag8Evalue; //
-	// private String tag9F0Dvalue; //
-	// private String tag9F0Evalue; //
-	// private String tag9F0Fvalue; //
-	// private String tag5F28value; //
-	// private String tag9F46value; //
-	// private String tag9F47value; //
-	// private String tag9F48value; //
-	// private String tag93value; //
-	// private String tag5F25value; //
-	// private String tag9F4Avalue; //
-	// private String tag5F74value; //
 
 	private Map<String, String> RRDataList = new HashMap();
 
@@ -270,6 +249,11 @@ public class QuickPassActivity extends Activity {
 		return purchaseresult;
 	}
 
+	/**
+	 * 静态数据认证
+	 * @param pAIP
+	 * @throws Exception
+	 */
 	private void RSAAuth(String pAIP) throws Exception {
 		String CAindex = RRDataList.get(getResources().getString(R.string.tag8F));
 		if(CAindex == null){

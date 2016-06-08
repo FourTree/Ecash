@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-
 import java.util.Map;
 
 import cn.z.ecash.nfc.CardManager;
@@ -57,62 +56,12 @@ public class ActivityLoad extends Activity {
 	private static final char[] HEX_DIGITS = { '0', '1', '2', '3', '4', '5',
 			'6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
+	private Map<String, String> RRDataList = new HashMap();
+	private String RRAUTHDATA;//静态认证数据
 	private String AIP; // 应用交互特征
 	private String AFL; // 应用文件定位器
-	private byte[] returnMsg = null;
-	private byte[] pdolmsg = null;
-	private byte[] returnMsg1 = null;
-	private byte[] returnMsg2 = null;
-	private byte[] returnMsg3 = null;
-	private byte[] returnMsg4 = null;
-	private byte[] returnMsg5 = null;
-	private byte[] returnMsg6 = null;
-	private byte[] returnMsg7 = null;
-	private byte[] returnMsg03 = null; // 18010200
-	private byte[] returnMsg04 = null; // 20010100
-
-	// 0101
-	private String tag57value; // 磁条 2 等效数据
-	private String tag9F1Fvalue; // 磁条1自定义数据
-	// 0102
-	private String tag5F20value; // 持卡人姓名
-	private String tag9F61value; // 持卡人证件号标签
-	private String tag9F62value;// 持卡人证件类型标签
-	// 0201
-	private String tag5Avalue; // 应用主账号 PAN
-	private String tag5F24value; // 应用失效日期
-	private String tag5F34value; // 应用主账号序列号标签
-	private String tag9F07value;// 应用用途控制标签
-	private String tag8Evalue; // 持卡人验证方法（CVM）列表标签
-	private String tag9F0Dvalue;// 发卡行行为代码-缺省
-	private String tag9F0Evalue;// 发卡行行为代码-拒绝
-	private String tag9F0Fvalue;// 发卡行行为代码-联机
-	private String tag5F28value;// 发卡行国家代码
-	// 0202
-	private String tag9F46value;// IC 卡公私钥数据
-	private String tag9F47value; // IC 卡公私钥数据
-	private String tag9F48value; // IC 卡公私钥数据
-	// 0203
-	private String tag93value; // 签名的静态应用数据
-	private String tag5F25value;// 应用生效日期标签
-	private String tag9F4Avalue;// 静态数据认证标签列表标签
-	// 0301
-	private String tag90value;// 发卡行公钥证书标签
-	private String tag92value;// 发卡行公钥余数标签
-	private String tag9F32value;// 发卡行公钥指数标签
-	private String tag8Fvalue;// CA公钥索引 （PKI）标签
-
-	// 0302
-	private String tag5F30value;// 服务码
-	private String tag8Cvalue;// 卡片风险管理数据对象列表 1（CDOL1）
-	private String tag8Dvalue;// 卡片风险管理数据对象列表 2（CDOL2）
-	private String tag9F49value;// 动态数据认证数据对象列表（DDOL）标签
-	private String tag9F63value;// 卡产品标识信息
-	private String tag9F08value;// 应用版本号标签
-
-	// 0401
-	private String tag9F14value;// 连续脱机交易下限标签
-	private String tag9F23value;// 连续脱机交易上限标签
+	private byte[] FCIMsg = null;
+	private byte[] PDOLMsg = null;
 
 	private String TVR; // 终端验证结果
 	private String byte1; // TVR字节1
@@ -130,18 +79,12 @@ public class ActivityLoad extends Activity {
 
 	private String authData; // 认证数据
 	private String issuerScript; // 发卡行脚本
-	private String oriMsgId; // 源报文标识号
-
-	private String scriptExeResult = "1"; // 脚本处理结果
-
+	
 	private boolean continueFlag = true;
-	private String failReasion = "";
-
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_load);
-		this.res = res;
 		Bundle tbdl = this.getIntent().getExtras();
 		String param = tbdl.getString("showstring");
 
@@ -209,16 +152,6 @@ public class ActivityLoad extends Activity {
 	}
 
 	void retMainActivity() {
-		// Intent tintent = new Intent(this,MainActivity.class);
-		// Bundle tbdl = new Bundle();
-		//
-		// String strinput = etInput.getText().toString();
-		//
-		// tbdl.putString("inputloamoney",strinput);
-		// tintent.putExtras(tbdl);
-		//
-		// startActivity(tintent);
-
 		String strinput = etInput.getText().toString();
 		Intent intent = new Intent();
 		intent.putExtra("inputloamoney", strinput);//
@@ -257,7 +190,7 @@ public class ActivityLoad extends Activity {
 			Log.i(LOGTAG, "【processcreditforload】:select err");
 			return loadresult;
 		}
-		returnMsg = Utils.bytesFromHexStringNoBlank(fci);
+		FCIMsg = Utils.bytesFromHexStringNoBlank(fci);
 
 		openFlag = true;
 		Log.i(LOGTAG, "【start】" + fci);
@@ -339,7 +272,7 @@ public class ActivityLoad extends Activity {
 
 			// 发送Read Record指令并解析指令响应
 			if (continueFlag) {
-				sendAndParseRR();
+				sendAndParseRR(AFL);
 				Log.i(LOGTAG, "【readRecode】:done");
 			}
 			// 步骤6--read record
@@ -348,7 +281,6 @@ public class ActivityLoad extends Activity {
 			} else {
 				return loadresult;
 			}
-
 			// 得到标签95的值
 			if (continueFlag) {
 				TVR = parseTag95();
@@ -475,7 +407,6 @@ public class ActivityLoad extends Activity {
 		}
 
 		try {
-			scriptExeResult = "0";
 			for (int i = 0; i < scriptStr.size(); i++) { // 循环执行所有脚本
 				byte[] result = null;
 				result = Utils.bytesFromHexStringNoBlank(pbocmanager
@@ -488,17 +419,14 @@ public class ActivityLoad extends Activity {
 				if (result.length == 0 || result == null) {
 					Log.v(TAG, "执行发卡行脚本命令" + scriptStr.get(i) + "反馈为空");
 					continueFlag = false;
-					failReasion = "执行发卡行脚本命令反馈为空。";
 					break;
 				}
 				if ("9000".equals(resultStr)) {
 					Log.v(TAG, "执行发卡行脚本命令" + scriptStr.get(i) + "反馈成功");
 					continue;
 				} else { // 一个脚本执行失败即停止循环，但交易继续
-					scriptExeResult = "1";
 					Log.v(TAG, "执行脚本命令反馈失败");
 					continueFlag = false;
-					failReasion = "执行脚本命令反馈失败。";
 					break;
 				}
 			}
@@ -525,6 +453,7 @@ public class ActivityLoad extends Activity {
 		sbEndACComd.append(getResources().getString(R.string.ENDACP2));
 
 		StringBuffer sbEndACData = new StringBuffer();
+		String tag8Dvalue = RRDataList.get(getResources().getString(R.string.tag8D));
 		// 授权响应码（认证数据后两个字节）
 		if (tag8Dvalue.contains(getResources().getString(R.string.tag8A))) {
 			sbEndACData.append(authData.substring(authData.length() - 4));
@@ -592,15 +521,14 @@ public class ActivityLoad extends Activity {
 		sbEndACComd.append("00");
 		Log.v(TAG, "交易结束处理指令:" + sbEndACComd.toString());
 		try {
-			returnMsg7 = Utils.bytesFromHexStringNoBlank(pbocmanager
+			byte[] gacResponseBytes = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(Utils.bytesFromHexStringNoBlank(sbEndACComd
 							.toString())));
 
-			Log.v(TAG, "交易结束处理指令反馈内容:" + Utils.toHexString(returnMsg7));
-			if (returnMsg7.length <= 2) {
+			Log.v(TAG, "交易结束处理指令反馈内容:" + Utils.toHexString(gacResponseBytes));
+			if (gacResponseBytes.length <= 2) {
 				Log.v(TAG, "交易结束处理指令反馈失败,指令反馈为空");
 				continueFlag = false;
-				failReasion = "交易结束处理指令反馈为空。";
 			}
 		} catch (NumberFormatException e) {
 			Log.e(TAG, "发送交易结束指令异常", e);
@@ -645,7 +573,6 @@ public class ActivityLoad extends Activity {
 				TVR = TVR.substring(TVR.length() - 2);
 				TVR = TVR + byte5;
 				continueFlag = false;
-				failReasion = "外部认证指令反馈为空。";
 			} else {
 				String resultStr = Utils.toHexStringNoBlank(authResult);
 				if (!"9000".equals(resultStr)) {
@@ -654,7 +581,6 @@ public class ActivityLoad extends Activity {
 					TVR = TVR + byte5;
 					Log.v(TAG, "外部认证指令反馈失败，反馈内容:" + resultStr);
 					continueFlag = false;
-					failReasion = "外部认证指令反馈失败。";
 				} else {
 					Log.v(TAG, "外部认证成功");
 				}
@@ -678,15 +604,15 @@ public class ActivityLoad extends Activity {
 	private void sendAndParseAC(String commond) throws Exception {
 		Log.v(TAG, "发送GENERATE AC指令");
 		try {
-			returnMsg6 = Utils.bytesFromHexStringNoBlank(pbocmanager
+			byte[] gacResponseBytes = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(Utils.bytesFromHexStringNoBlank(commond)));
 
 			Log.d(
 					TAG,
-					"sendAndParseAC方法中returnMsg6="
-							+ Utils.toHexStringNoBlank(returnMsg6));
-			if (returnMsg6.length > 2) {
-				String hexStrGAC = Utils.toHexStringNoBlank(returnMsg6);
+					"GENERATE AC指令返回值="
+							+ Utils.toHexStringNoBlank(gacResponseBytes));
+			if (gacResponseBytes.length > 2) {
+				String hexStrGAC = Utils.toHexStringNoBlank(gacResponseBytes);
 				hexStrGAC = hexStrGAC.substring(0, hexStrGAC.length() - 4);
 				Log.v(TAG, "GENERATE AC指令反馈成功，反馈内容:" + hexStrGAC);
 				// 密文信息数据
@@ -704,7 +630,6 @@ public class ActivityLoad extends Activity {
 			} else {
 				Log.v(TAG, "GENERATE AC指令反馈失败，指令返回为空");
 				continueFlag = false;
-				failReasion = "GENERATE AC指令反馈为空。";
 			}
 		} catch (NumberFormatException e) {
 			Log.e(TAG, "发送GENERATE AC指令异常", e);
@@ -733,6 +658,7 @@ public class ActivityLoad extends Activity {
 		sbAC.append(getResources().getString(R.string.ACP2));
 
 		StringBuffer sbACData = new StringBuffer();
+		String tag8Cvalue = RRDataList.get(getResources().getString(R.string.tag8C));
 		Log.v(TAG, "卡片风险管理数据对象列表1 CDOL1 [8C]的值:" + tag8Cvalue);
 		if (tag8Cvalue != null) {
 			// 授权金额9F02
@@ -824,21 +750,21 @@ public class ActivityLoad extends Activity {
 
 		// 字节2-------start
 		int TVRByte2 = 0; // 十进制整数最后转成十六进制数
-		if (!getResources().getString(R.string.appversion).equals(tag9F08value)) {
+		if (!getResources().getString(R.string.appversion).equals(RRDataList.get(getResources().getString(R.string.tag9F08)))) {
 			TVRByte2 = TVRByte2 + 128; // IC 卡和终端应用版本不一致，TVR字节2的b8位为1
 		}
 
 		// 日期的判断方法不确定，TVR字节2的b7和b6位暂为0
-		tag9F07value = "FFC0";// ////////测试假数据
+		String tag9F07value = "FFC0";// ////////测试假数据
 		char c = tag9F07value.charAt(2);
 		if (c > '8') {
 			TVRByte2 = TVRByte2 + 16; // 交易中有返现金额,AUC中字节2中b8位为1，即允许国内返现
 		}
-
+		byte[] atcbytes = null;
 		try {
 			// 终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器[9F13]值
 			Log.v(TAG, "终端发送取数据（GET DATA）命令80CA9F1300读取卡片中的上次联机ATC寄存器值");
-			returnMsg5 = Utils.bytesFromHexStringNoBlank(pbocmanager
+			atcbytes = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(Utils.bytesFromHexStringNoBlank("80CA9F1300")));
 
 		} catch (NumberFormatException e) {
@@ -849,8 +775,8 @@ public class ActivityLoad extends Activity {
 			throw e;
 		}
 
-		if (returnMsg5.length > 2) {
-			String hexstr = Utils.toHexString(returnMsg5);
+		if (atcbytes.length > 2) {
+			String hexstr = Utils.toHexString(atcbytes);
 			Log.v(TAG, "卡片中的上次联机ATC寄存器值" + hexstr);
 			if ("0000".equals(hexstr.substring(6))) {
 				TVRByte2 = TVRByte2 + 8;
@@ -858,7 +784,6 @@ public class ActivityLoad extends Activity {
 		} else {
 			Log.v(TAG, "终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器值失败，返回值为空");
 			continueFlag = false;
-			failReasion = "GET DATA指令读取上次联机ATC寄存器值为空。";
 		}
 		StringBuffer sb = new StringBuffer();
 		if (Integer.toHexString(TVRByte2).length() == 1) {
@@ -898,590 +823,79 @@ public class ActivityLoad extends Activity {
 	 * 
 	 * @throws Exception
 	 */
-	private void sendAndParseRR() throws Exception {
+	/**
+	 * 发送read record指令并解析响应
+	 * 
+	 * @throws Exception
+	 */
+	private void sendAndParseRR(String pAFL) throws Exception {
 		Log.v(TAG, "发送read record指令");
+		DecimalFormat df;
+		String tmpvalue;
+		String tmptag;
+		RRDataList.clear();
+		RRAUTHDATA = "";
 		try {
-			for (int i = 0; i < AFL.length() - 4;) {
+			for (int i = 0; i < pAFL.length() - 4;) {
 				df = new DecimalFormat("00");
-				String hexString = AFL.substring(i, i + 8);
-				String AFLTagstr = hexString.substring(0, 2);
+				String hexString = pAFL.substring(i, i + 8);
+				byte[] AFLbytes = Utils.hexStringToByteArray(hexString);
+				int start = AFLbytes[1];
+				int end = AFLbytes[2];
+				int authdatarr = AFLbytes[3];
+				AFLbytes[0] |= 0x04;
 				String P1 = "";
-				String P2 = "";
-				int start = Integer.parseInt(hexString.substring(2, 4)
-						.replaceFirst("0", ""));
-				int end = Integer.parseInt(hexString.substring(4, 6)
-						.replaceFirst("0", ""));
+				String P2 = Utils.toHexString(AFLbytes).substring(0, 2);
+				int SFI = (int) ((byte) 0x1F & (byte) (AFLbytes[0] >> 3));
+				String res = "";
+				for (int j = start; j <= end; j++) {
+					P1 = df.format(j);
+					StringBuffer sbrr = new StringBuffer();
+					sbrr.append(getResources().getString(R.string.RRCLA));
+					sbrr.append(getResources().getString(R.string.RRINS));
+					sbrr.append(P1);
+					sbrr.append(P2);
+					sbrr.append(getResources().getString(R.string.RRLC));
+					byte[] rrcom = Utils.bytesFromHexStringNoBlank(sbrr
+							.toString());
+					byte[] record = Utils.bytesFromHexStringNoBlank(pbocmanager
+							.sendAPDU(rrcom));
 
-				// SFI = 1
-				if ("08".equals(AFLTagstr)) {
-					P2 = getResources().getString(R.string.AFL08);
-					for (int j = start; j <= end; j++) {
-						P1 = df.format(j);
-						StringBuffer sbrr = new StringBuffer();
-						sbrr.append(getResources().getString(R.string.RRCLA));
-						sbrr.append(getResources().getString(R.string.RRINS));
-						sbrr.append(P1);
-						sbrr.append(P2);
-						sbrr.append(getResources().getString(R.string.RRLC));
-						byte[] rrcom = Utils.bytesFromHexStringNoBlank(sbrr
-								.toString());
-						returnMsg3 = Utils
-								.bytesFromHexStringNoBlank(pbocmanager
-										.sendAPDU(rrcom));
-
-						String str3 = Utils.toHexStringNoBlank(returnMsg3);
-						if (returnMsg3.length > 2) {// 成功响应
-							List<TLVEntity> list = Utils.getNodes(str3);
-							// RecordNum = 1
-							if ("01".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 1,RecordNum = 1");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources()
-											.getString(R.string.tag57).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag57value = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F1F).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F1Fvalue = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-								}
-							}
-							// RecordNum = 2
-							if ("02".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 1,RecordNum = 2");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources().getString(
-											R.string.tag5F20).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag5F20value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F61).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F61value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F62).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F62value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-								}
-							}
-						} else {
-							Log.v(TAG, "读应用数据 SFI = 1,RecordNum = " + P1
-									+ "指令反馈失败，反馈结果为空");
-							continueFlag = false;
-							failReasion = "读取个人化数据失败。";
-							break;
+					String str3 = Utils.toHexStringNoBlank(record);
+					if(authdatarr > 0){
+						if("81".equals(str3.substring(2,4))){
+							RRAUTHDATA += str3.substring(6,(str3.length()-4));
+						}else{
+							RRAUTHDATA += str3.substring(4,(str3.length()-4));
 						}
+						authdatarr --;
 					}
-				}
-				// SFI = 2
-				if ("10".equals(AFLTagstr)) {
-					P2 = getResources().getString(R.string.AFL10);
-					for (int j = start; j <= end; j++) {
-						P1 = df.format(j);
-						StringBuffer sbrr = new StringBuffer();
-						sbrr.append(getResources().getString(R.string.RRCLA));
-						sbrr.append(getResources().getString(R.string.RRINS));
-						sbrr.append(P1);
-						sbrr.append(P2);
-						sbrr.append(getResources().getString(R.string.RRLC));
-						byte[] rrcom = Utils.bytesFromHexStringNoBlank(sbrr
-								.toString());
-						returnMsg4 = Utils
-								.bytesFromHexStringNoBlank(pbocmanager
-										.sendAPDU(rrcom));
-
-						String str4 = Utils.toHexStringNoBlank(returnMsg4);
-						if (returnMsg4.length > 2) {
-							List<TLVEntity> list = Utils.getNodes(str4);
-							// RecordNum = 1
-							if ("01".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 2,RecordNum = 1");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources().getString(
-											R.string.tag5F24).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag5F24value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag5A).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										String str = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-										int f = str.indexOf("f");
-										int F = str.indexOf("F");
-										if (f > 0 && F > 0) {
-											if (f >= F) {
-												tag5Avalue = str.substring(0,
-														str.indexOf("F"));
-											} else {
-												tag5Avalue = str.substring(0,
-														str.indexOf("f"));
-											}
-										} else if (f > 0 && F < 0) {
-											tag5Avalue = str.substring(0,
-													str.indexOf("f"));
-										} else if (f < 0 && F > 0) {
-											tag5Avalue = str.substring(0,
-													str.indexOf("F"));
-										} else {
-											tag5Avalue = str;
-										}
-									}
-									if (getResources().getString(
-											R.string.tag5F34).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag5F34value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F07).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F07value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8E).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Evalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F0D).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F0Dvalue = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F0E).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F0Evalue = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F0F).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F0Fvalue = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag5F28).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag5F28value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-
-									if (getResources()
-											.getString(R.string.tag8C).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Cvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8D).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Dvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-								}
-							}
-							// RecordNum = 2
-							if ("02".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 2,RecordNum = 2");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources().getString(
-											R.string.tag9F46).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F46value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F47).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F47value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F48).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F48value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-								}
-							}
-							// RecordNum = 3
-							if ("03".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 2,RecordNum = 3");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources()
-											.getString(R.string.tag93).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag93value = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag5F25).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag5F25value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-
-									if (getResources().getString(
-											R.string.tag9F4A).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F4Avalue = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-								}
-							}
-							// RecordNum = 4
-							if ("04".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 2,RecordNum = 4");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources().getString(
-											R.string.tag5F34).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag5F34value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag5F30).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag5F30value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8C).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Cvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8D).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Dvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F49).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F49value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F63).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F63value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F08).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F08value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-								}
-							}
-						} else {
-							Log.v(TAG, "读应用数据 SFI = 2,RecordNum = " + P1
-									+ "指令反馈失败，反馈结果为空");
-							continueFlag = false;
-							failReasion = "读取个人化数据失败。";
-							break;
+					if (record.length > 2) {// 成功响应
+						List<TLVEntity> list = Utils.getNodes(str3);
+						Log.v(TAG, "读取应用数据 SFI = " + SFI + ",RecordNum = "
+								+ P1);
+						for (int k = 0; k < list.size(); k++) {
+							tmptag = Utils.intToHexString(list.get(k).getTag());
+							tmpvalue = Utils.toHexString(list.get(k)
+									.getValue(), 0, list.get(k).length);
+							RRDataList.put(tmptag, tmpvalue);
 						}
-					}
-				}
-				// SFI = 3
-				if ("18".equals(AFLTagstr)) {
-					P2 = getResources().getString(R.string.AFL18);
-					for (int j = start; j <= end; j++) {
-
-						// 如果不存在0302，那么8C（CDOL1）等标签就去0204中读
-
-						P1 = df.format(j);
-						StringBuffer sbrr = new StringBuffer();
-						sbrr.append(getResources().getString(R.string.RRCLA));
-						sbrr.append(getResources().getString(R.string.RRINS));
-						sbrr.append(P1);
-						sbrr.append(P2);
-						sbrr.append(getResources().getString(R.string.RRLC));
-						byte[] rrcom = Utils.bytesFromHexStringNoBlank(sbrr
-								.toString());
-						returnMsg03 = Utils
-								.bytesFromHexStringNoBlank(pbocmanager
-										.sendAPDU(rrcom));
-
-						String str03 = Utils.toHexStringNoBlank(returnMsg03);
-						if (returnMsg03.length > 2) {
-							List<TLVEntity> list = Utils.getNodes(str03);
-							// RecordNum = 1
-							if ("01".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 3,RecordNum = 1");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources()
-											.getString(R.string.tag90).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag90value = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag92).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag92value = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F32).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F32value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8C).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Cvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8D).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Dvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8F).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Fvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-								}
-							}
-							// RecordNum = 2
-							if ("02".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 3,RecordNum = 2");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources().getString(
-											R.string.tag5F30).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag5F30value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8C).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Cvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8D).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Dvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F49).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F49value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F63).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F63value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F08).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F08value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-								}
-							}
-						} else {
-							Log.v(TAG, "读应用数据 SFI = 3,RecordNum = " + P1
-									+ "指令反馈失败，反馈结果为空");
-							continueFlag = false;
-							failReasion = "读取个人化数据失败。";
-							break;
-						}
-					}
-				}
-				// SFI = 4
-				if ("20".equals(AFLTagstr)) {
-					P2 = getResources().getString(R.string.AFL20);
-					for (int j = start; j <= end; j++) {
-						P1 = df.format(j);
-						StringBuffer sbrr = new StringBuffer();
-						sbrr.append(getResources().getString(R.string.RRCLA));
-						sbrr.append(getResources().getString(R.string.RRINS));
-						sbrr.append(P1);
-						sbrr.append(P2);
-						sbrr.append(getResources().getString(R.string.RRLC));
-						byte[] rrcom = Utils.bytesFromHexStringNoBlank(sbrr
-								.toString());
-
-						returnMsg04 = Utils
-								.bytesFromHexStringNoBlank(pbocmanager
-										.sendAPDU(rrcom));
-
-						String str04 = Utils.toHexStringNoBlank(returnMsg04);
-						if (returnMsg04.length > 2) {
-							List<TLVEntity> list = Utils.getNodes(str04);
-							// RecordNum = 1
-							if ("01".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 4,RecordNum = 1");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources().getString(
-											R.string.tag9F14).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F14value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-									if (getResources().getString(
-											R.string.tag9F23).equals(
-											Utils.intToHexString(list.get(k)
-													.getTag()))) {
-										tag9F23value = Utils.toHexString(list
-												.get(k).getValue(), 0, list
-												.get(k).length);
-									}
-								}
-							}
-
-							// 平安银行的DGI 8C和8D放在了0403中
-							if ("03".equals(P1)) {
-								Log.v(TAG, "读取应用数据 SFI = 4,RecordNum = 1");
-								for (int k = 0; k < list.size(); k++) {
-									if (getResources()
-											.getString(R.string.tag8C).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Cvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-									if (getResources()
-											.getString(R.string.tag8D).equals(
-													Utils.intToHexString(list
-															.get(k).getTag()))) {
-										tag8Dvalue = Utils.toHexString(
-												list.get(k).getValue(), 0,
-												list.get(k).length);
-									}
-								}
-							}
-						} else {
-							Log.v(TAG, "读应用数据 SFI = 4,RecordNum = " + P1
-									+ "指令反馈失败，反馈结果为空");
-							continueFlag = false;
-							failReasion = "读取个人化数据失败。";
-							break;
-						}
+					} else {
+						Log.v(TAG, "读应用数据 SFI = " + SFI + ",RecordNum = "
+								+ P1 + "指令反馈失败，反馈结果为空");
+						// continueFlag = false;
+						// failReasion = "读取个人化数据失败。";
+						break;
 					}
 				}
 				i = i + 8;
 			}
+			Log.i(TAG, "记录文件信息:\n" + RRDataList.toString());
 		} catch (Exception e) {
 			Log.e(TAG, "发送read record指令并解析响应 异常", e);
 			throw e;
 		}
 	}
-
 	/**
 	 * 发送GPO指令，并解析响应
 	 * 
@@ -1492,10 +906,10 @@ public class ActivityLoad extends Activity {
 	private void sendGPOData(byte[] gpocom) throws Exception {
 		Log.v(TAG, "发送GPO指令");
 		try {
-			returnMsg2 = Utils.bytesFromHexStringNoBlank(pbocmanager
+			byte[] gpresponse = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(gpocom));
 
-			String hexString = Utils.toHexStringNoBlank(returnMsg2);
+			String hexString = Utils.toHexStringNoBlank(gpresponse);
 			Log.v(TAG, "GPO指令反馈内容:" + hexString);
 			if (hexString.length() > 4) {
 				Log.v(TAG, "GPO指令响应成功");
@@ -1506,7 +920,6 @@ public class ActivityLoad extends Activity {
 				// 返回6985的处理，卡片不支持该应用
 				Log.v(TAG, "GPO指令响应失败");
 				continueFlag = false;
-				failReasion = "GPO指令反馈失败";
 			}
 		} catch (Exception e) {
 			Log.e(TAG, "发送GPO指令异常", e);
@@ -1672,9 +1085,9 @@ public class ActivityLoad extends Activity {
 	private List<String> pasePdol() {
 		Log.v(TAG, "解析PDOL数据");
 		List<String> pdolcontext = null;
-		if (pdolmsg != null) {
+		if (PDOLMsg != null) {
 			pdolcontext = new ArrayList<String>();
-			String pdoltemp = Utils.toHexStringNoBlank(pdolmsg);
+			String pdoltemp = Utils.toHexStringNoBlank(PDOLMsg);
 			if (pdoltemp.contains(getResources().getString(R.string.tag9F66))) {
 				Log.v(TAG, "PDOL数据包含9F66:终端交易属性");
 				pdolcontext.add(getResources().getString(R.string.tag9F66));
@@ -1733,14 +1146,14 @@ public class ActivityLoad extends Activity {
 	private void reSendSelect() {
 		Log.v(TAG, "重发select指令获得PDOL数据");
 		try {
-			returnMsg1 = Utils.bytesFromHexStringNoBlank(pbocmanager
+			byte[] fcibytes = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(Utils.bytesFromHexStringNoBlank(getResources()
 							.getString(R.string.selectcmd))));
 
-			if (returnMsg1.length > 2) {
+			if (fcibytes.length > 2) {
 				Log.v(TAG, "重发select指令响应成功");
-				Log.v(TAG, "select指令响应内容:" + Utils.toHexString(returnMsg1));
-				String str = Utils.toHexStringNoBlank(returnMsg1);
+				Log.v(TAG, "select指令响应内容:" + Utils.toHexString(fcibytes));
+				String str = Utils.toHexStringNoBlank(fcibytes);
 				List<TLVEntity> list = Utils.getNodes(str);
 				for (int i = 0; i < list.size(); i++) {
 					if (getResources().getString(R.string.tagA5).equals(
@@ -1750,7 +1163,7 @@ public class ActivityLoad extends Activity {
 							if (getResources().getString(R.string.tag9F38)
 									.equals(Utils.intToHexString(list1.get(j)
 											.getTag()))) {
-								pdolmsg = Utils.bytesFromHexStringNoBlank(Utils
+								PDOLMsg = Utils.bytesFromHexStringNoBlank(Utils
 										.toHexString(list1.get(j).getValue(),
 												0, list1.get(j).length));
 								break;
@@ -1759,12 +1172,11 @@ public class ActivityLoad extends Activity {
 					}
 				}
 				Log.v(TAG,
-						"解析select指令响应获得PDOL数据:" + Utils.toHexString(pdolmsg));
+						"解析select指令响应获得PDOL数据:" + Utils.toHexString(PDOLMsg));
 				Log.v(TAG, "重发select指令获得PDOL数据成功");
 			} else {
 				Log.v(TAG, "重发select指令响应失败，指令响应为空");
 				continueFlag = false;
-				failReasion = "重发select指令反馈为空。";
 			}
 
 		} catch (Exception e) {
@@ -1783,7 +1195,7 @@ public class ActivityLoad extends Activity {
 		Log.v(TAG, "判断select指令响应中是否包含PDOL数据");
 		boolean pdolFlag = false;
 		try {
-			String str = Utils.toHexStringNoBlank(returnMsg);
+			String str = Utils.toHexStringNoBlank(FCIMsg);
 			if ("9000".equals(str.substring(str.length() - 4))) {
 				List<TLVEntity> list = Utils.getNodes(str);
 				for (int i = 0; i < list.size(); i++) {
@@ -1794,13 +1206,13 @@ public class ActivityLoad extends Activity {
 							if (getResources().getString(R.string.tag9F38)
 									.equals(Utils.intToHexString(list1.get(j)
 											.getTag()))) {
-								pdolmsg = Utils.bytesFromHexStringNoBlank(Utils
+								PDOLMsg = Utils.bytesFromHexStringNoBlank(Utils
 										.toHexString(list1.get(j).getValue(),
 												0, list1.get(j).length));
 								Log.v(
 										TAG,
 										"PDOL数据:"
-												+ Utils.toHexStringNoBlank(pdolmsg));
+												+ Utils.toHexStringNoBlank(PDOLMsg));
 								break;
 							}
 						}
@@ -1809,20 +1221,17 @@ public class ActivityLoad extends Activity {
 			} else if ("6A81".equals(str.substring(str.length() - 4))) {
 				Log.v(TAG, "select指令响应结果为6A81，卡片被锁或命令不支持");
 				continueFlag = false;
-				failReasion = "select指令反馈卡片被锁或命令不支持";
 			} else if ("6A82".equals(str.substring(str.length() - 4))) {
 				Log.v(TAG, "select指令响应结果为6A82，所选的文件未找到");
-				failReasion = "select指令反馈所选的文件未找到";
 				continueFlag = false;
 			} else if ("6283".equals(str.substring(str.length() - 4))) {
 				Log.v(TAG, "select指令响应结果为6283，选择文件无效");
-				failReasion = "select指令反馈选择文件无效";
 				continueFlag = false;
 			} else {
 				Log.v(TAG, "select指令响应失败，响应结果为:" + str);
 			}
 
-			if (pdolmsg != null) {
+			if (PDOLMsg != null) {
 				pdolFlag = true;
 			} else {
 				Log.v(TAG, "select指令响应中不包含PDOL数据");
