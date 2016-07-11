@@ -194,7 +194,10 @@ public class MainActivity extends Activity {
 	}
 
 	void eCashGetDetail() {
-		// tvShowDebuginfo.setText("---debug info---\nget detail:\n"+pbocm.getLog("log"));
+		Bundle detailbdl = new Bundle();
+		Intent detailintent = new Intent(this, DetailActivity.class);
+		detailintent.putExtras(detailbdl);
+		startActivity(detailintent);
 	}
 
 	void eCashGetCardNumber() {
@@ -232,18 +235,17 @@ public class MainActivity extends Activity {
 				}
 			}
 		}
-		if(toff < 0){
+		if (toff < 0) {
 			strn = null;
-		}else{
+		} else {
 			strn = Utils.toHexString(tempbytes, toff, tempbytes[toff - 1]);
 			int numberend = strn.indexOf("F");
-			if(numberend > 0){
-				strn = strn.substring(0,numberend);
+			if (numberend > 0) {
+				strn = strn.substring(0, numberend);
 			}
 		}
-		
-		tvShowDebuginfo.setText("---Card info---\ncard number:\n"
-				+ strn);
+
+		tvShowDebuginfo.setText("---Card info---\ncard number:\n" + strn);
 	}
 
 	void eCashGetATC() {
@@ -257,8 +259,8 @@ public class MainActivity extends Activity {
 			Log.i(LOGTAG, "【eCashGetATC】:select card err");
 			return;
 		}
-		tvShowDebuginfo
-				.setText("---Card info---\nATC=" + pbocmanager.getTag("9F36"));
+		tvShowDebuginfo.setText("---Card info---\nATC="
+				+ pbocmanager.getTag("9F36"));
 		Log.i(LOGTAG, "【eCashGetATC】:end");
 	}
 

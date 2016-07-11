@@ -485,12 +485,12 @@ public class Iso7816 {
 
 		public byte[] transceive(final byte[] cmd) {
 			try {
-				Log.i(LOGTAG, "【CMD】-->"+Utils.toHexString(cmd));
+				Log.i(LOGTAG, "【CMD】-->"+Utils.toHexStringNoBlank(cmd));
 				byte[] res = nfcTag.transceive(cmd);
 				if(res == null){
 					Log.i(LOGTAG, "【RES】:response err");
 				}
-				Log.i(LOGTAG, "【RES】-->"+Utils.toHexString(res));
+				Log.i(LOGTAG, "【RES】-->"+Utils.toHexStringNoBlank(res));
 				return res;
 			} catch (Exception e) {
 				Log.i(LOGTAG, "【RES】: send cmd exception");

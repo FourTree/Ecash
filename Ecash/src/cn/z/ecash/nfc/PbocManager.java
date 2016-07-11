@@ -29,12 +29,13 @@ import android.nfc.tech.NfcV;
 import android.os.Parcelable;
 import android.util.Log;
 
-@SuppressLint("NewApi") public final class PbocManager {
+@SuppressLint("NewApi")
+public final class PbocManager {
 	private final static String LOGTAG = new String("PBOCM");
-	private final static byte[] PPSE = { 
-		(byte) '2',(byte) 'P', (byte) 'A', (byte) 'Y',(byte) '.', 
-		(byte) 'S', (byte) 'Y', (byte) 'S', (byte) '.',
-		(byte) 'D', (byte) 'D', (byte) 'F',(byte) '0', (byte) '1'  };
+	private final static byte[] PPSE = { (byte) '2', (byte) 'P', (byte) 'A',
+			(byte) 'Y', (byte) '.', (byte) 'S', (byte) 'Y', (byte) 'S',
+			(byte) '.', (byte) 'D', (byte) 'D', (byte) 'F', (byte) '0',
+			(byte) '1' };
 	protected final static byte[] DFI_MF = { (byte) 0x3F, (byte) 0x00 };
 	protected final static byte[] DFI_EP = { (byte) 0x10, (byte) 0x01 };
 
@@ -52,6 +53,9 @@ import android.util.Log;
 	protected final static byte TRANS_CSU = 6;
 	protected final static byte TRANS_CSU_CPX = 9;
 
+	public final static int INDEX_TRADE_LOGENTRY = 1;
+	public final static int INDEX_LOAD_LOGENTRY = 2;
+
 	protected String name;
 	protected String id;
 	protected String serl;
@@ -63,13 +67,13 @@ import android.util.Log;
 
 	public static String[][] TECHLISTS;
 	public static IntentFilter[] FILTERS;
-	
-	private byte[] DFAID = null;
-	private byte LOGSFI = 0;
-	private Iso7816.Tag TAG7816 = null;
-	
-	private static PbocManager pbocinstance = null; 
 
+	private byte[] DFAID = null;
+	private byte[] TradeLogEntry = null;
+	private byte[] LoadLogEntry = null;
+	private Iso7816.Tag TAG7816 = null;
+
+	private static PbocManager pbocinstance = null;
 
 	static {
 		try {
@@ -81,173 +85,177 @@ import android.util.Log;
 		} catch (Exception e) {
 		}
 	}
-	
-	private PbocManager(){
-		
+
+	private PbocManager() {
+
 	}
-	public static PbocManager getInstance(Parcelable parcelable, Resources res){
-		if(pbocinstance != null)
+
+	public static PbocManager getInstance(Parcelable parcelable, Resources res) {
+		if (pbocinstance != null)
 			return pbocinstance;
 		pbocinstance = new PbocManager();
 		final Tag tag = (Tag) parcelable;
-		if(tag == null){
-			return null ;
+		if (tag == null) {
+			return null;
 		}
 		final IsoDep isodep = IsoDep.get(tag);
 		if (isodep == null) {
 			return null;
 		}
-		
+
 		pbocinstance.TAG7816 = new Iso7816.Tag(isodep);
 		pbocinstance.TAG7816.connect();
 		return pbocinstance;
 	}
-	
-	public static PbocManager getInstance(Parcelable parcelable){
-		if(pbocinstance != null)
+
+	public static PbocManager getInstance(Parcelable parcelable) {
+		if (pbocinstance != null)
 			return pbocinstance;
 		pbocinstance = new PbocManager();
 		final Tag tag = (Tag) parcelable;
-		if(tag == null){
-			return null ;
+		if (tag == null) {
+			return null;
 		}
 		final IsoDep isodep = IsoDep.get(tag);
 		if (isodep == null) {
 			return null;
 		}
-		
+
 		pbocinstance.TAG7816 = new Iso7816.Tag(isodep);
 		pbocinstance.TAG7816.connect();
 		return pbocinstance;
 	}
-	
-	public static PbocManager getInstance(){
-		if(pbocinstance != null)
+
+	public static PbocManager getInstance() {
+		if (pbocinstance != null)
 			return pbocinstance;
 		else
 			return null;
 	}
-	
-	public static void clearInstance(){
-		if(pbocinstance == null)
-			return ;
+
+	public static void clearInstance() {
+		if (pbocinstance == null)
+			return;
 		pbocinstance.TAG7816 = null;
-		pbocinstance  = null;
-		return  ;
+		pbocinstance = null;
+		return;
 	}
-	public String getAID(){
-		if(DFAID == null)
+
+	public String getAID() {
+		if (DFAID == null)
 			return null;
 		else
 			return Utils.toHexString(DFAID, 0, DFAID.length);
 	}
-	public boolean SelectCard(){
+
+	public boolean SelectCard() {
 		byte[] tbyte = null;
 		int toff = 0;
-		
-		if(TAG7816 == null)
+
+		if (TAG7816 == null)
 			return false;
 		Iso7816.Response ppseres = TAG7816.selectByName(PPSE);
 		if (ppseres.isOkey()) {
 			tbyte = ppseres.getBytes();
 			toff = 0;
-			
-			if((byte)0x6F == tbyte[toff++]){
-				if((byte)0x81 == tbyte[toff++]){
+
+			if ((byte) 0x6F == tbyte[toff++]) {
+				if ((byte) 0x81 == tbyte[toff++]) {
 					toff++;
 				}
-				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(FCIoff < 0)
-					return  false;
-				
-				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
-						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
-				if(FCIoff < 0)
-					return  false;
-				
-				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
-						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
-				if(Contentoff < 0)
-					return  false;
-				
-				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(DFAIDoff < 0)
-					return  false;
-				
-				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(APPlaboff < 0)
-					return  false;
-				
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (FCIoff < 0)
+					return false;
+
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C,
+						tbyte, (short) FCIoff, (short) tbyte[FCIoff - 1]);
+				if (FCIoff < 0)
+					return false;
+
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, tbyte,
+						(short) FCIdefoff, (short) tbyte[FCIdefoff - 1]);
+				if (Contentoff < 0)
+					return false;
+
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (DFAIDoff < 0)
+					return false;
+
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (APPlaboff < 0)
+					return false;
+
 				DFAID = new byte[tbyte[DFAIDoff - 1]];
 				System.arraycopy(tbyte, DFAIDoff, DFAID, 0, DFAID.length);
-				
-			}else{
+
+			} else {
 				return false;
 			}
 			Log.i(LOGTAG, "【AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
 		}
-			return true;
+		return true;
 	}
-	
-	public boolean SelectCard(Parcelable parcelable){
-		return SelectCard(parcelable,null);
+
+	public boolean SelectCard(Parcelable parcelable) {
+		return SelectCard(parcelable, null);
 	}
-	public boolean SelectCard(Parcelable parcelable, Resources res){
+
+	public boolean SelectCard(Parcelable parcelable, Resources res) {
 		final Tag tag = (Tag) parcelable;
-		if(tag == null){
-			return false ;
+		if (tag == null) {
+			return false;
 		}
 		final IsoDep isodep = IsoDep.get(tag);
 		if (isodep == null) {
 			return false;
 		}
-		
+
 		TAG7816 = new Iso7816.Tag(isodep);
 		TAG7816.connect();
-		
+
 		byte[] tbyte = null;
 		int toff = 0;
 		Iso7816.Response ppseres = TAG7816.selectByName(PPSE);
 		if (ppseres.isOkey()) {
 			tbyte = ppseres.getBytes();
 			toff = 0;
-			
-			if((byte)0x6F == tbyte[toff++]){
-				if((byte)0x81 == tbyte[toff++]){
+
+			if ((byte) 0x6F == tbyte[toff++]) {
+				if ((byte) 0x81 == tbyte[toff++]) {
 					toff++;
 				}
-				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(FCIoff < 0)
-					return  false;
-				
-				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
-						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
-				if(FCIoff < 0)
-					return  false;
-				
-				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
-						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
-				if(Contentoff < 0)
-					return  false;
-				
-				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(DFAIDoff < 0)
-					return  false;
-				
-				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(APPlaboff < 0)
-					return  false;
-				
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (FCIoff < 0)
+					return false;
+
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C,
+						tbyte, (short) FCIoff, (short) tbyte[FCIoff - 1]);
+				if (FCIoff < 0)
+					return false;
+
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, tbyte,
+						(short) FCIdefoff, (short) tbyte[FCIdefoff - 1]);
+				if (Contentoff < 0)
+					return false;
+
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (DFAIDoff < 0)
+					return false;
+
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (APPlaboff < 0)
+					return false;
+
 				DFAID = new byte[tbyte[DFAIDoff - 1]];
 				System.arraycopy(tbyte, DFAIDoff, DFAID, 0, DFAID.length);
-				
-			}else{
+
+			} else {
 				return false;
 			}
 			Log.i(LOGTAG, "【AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
@@ -260,88 +268,100 @@ import android.util.Log;
 
 		if (selectdffci.isOkey()) {
 			tbyte = selectdffci.getBytes();
-			if(tbyte == null){
+			if (tbyte == null) {
 				return false;
 			}
 			toff = 0;
-			if((byte)0x6F == tbyte[toff++]){
-				if((byte)0x81 == tbyte[toff++]){
+			if ((byte) 0x6F == tbyte[toff++]) {
+				if ((byte) 0x81 == tbyte[toff++]) {
 					toff++;
 				}
-				toff = Utils.findValueOffByTag((short) 0xA5, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(toff < 0)
-					return  false;
+				toff = Utils.findValueOffByTag((short) 0xA5, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return false;
 				int toffA5 = toff;
 
-				//PDOL
-				toff = Utils.findValueOffByTag((short) 0x9F38, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(toff < 0)
-					return  false;
-				
-				
-				toff = Utils.findValueOffByTag((short) 0xBF0C, 
-						tbyte,(short)toffA5,(short)tbyte[toffA5-1]);
-				if(toff < 0)
-					return  false;
-				
-				toff = Utils.findValueOffByTag((short) 0x9F4D, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(toff < 0)
-					return  false;
-				
-				LOGSFI = tbyte[toff];
+				// PDOL
+				toff = Utils.findValueOffByTag((short) 0x9F38, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return false;
+
+				toff = Utils.findValueOffByTag((short) 0xBF0C, tbyte,
+						(short) toffA5, (short) tbyte[toffA5 - 1]);
+				if (toff < 0)
+					return false;
+
+				toff = Utils.findValueOffByTag((short) 0x9F4D, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return false;
+
+				TradeLogEntry = new byte[2];
+				TradeLogEntry[0] = tbyte[toff];
+				TradeLogEntry[1] = tbyte[toff + 1];
+				Log.i(LOGTAG, "【TradeLogEntry】:" + Utils.toHexStringNoBlank(TradeLogEntry));
+
+				toff = Utils.findValueOffByTag((short) 0xDF4D, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff > 0) {
+					LoadLogEntry = new byte[2];
+					LoadLogEntry[0] = tbyte[toff];
+					LoadLogEntry[1] = tbyte[toff + 1];
+					Log.i(LOGTAG, "【LoadLogEntry】:" + Utils.toHexStringNoBlank(LoadLogEntry));
+				}
 			}
-			Log.i(LOGTAG, "【LOGSFI】:" + LOGSFI);
+
 		}
+		Log.i(LOGTAG, "【select】：done" );
 
 		return true;
 	}
-	
-	public boolean Select(){
+
+	public boolean Select() {
 		byte[] tbyte = null;
 		int toff = 0;
-		if(TAG7816 == null)
+		if (TAG7816 == null)
 			return false;
 		Iso7816.Response ppseres = TAG7816.selectByName(PPSE);
 		if (ppseres.isOkey()) {
 			tbyte = ppseres.getBytes();
 			toff = 0;
-			
-			if((byte)0x6F == tbyte[toff++]){
-				if((byte)0x81 == tbyte[toff++]){
+
+			if ((byte) 0x6F == tbyte[toff++]) {
+				if ((byte) 0x81 == tbyte[toff++]) {
 					toff++;
 				}
-				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(FCIoff < 0)
-					return  false;
-				
-				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
-						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
-				if(FCIoff < 0)
-					return  false;
-				
-				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
-						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
-				if(Contentoff < 0)
-					return  false;
-				
-				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(DFAIDoff < 0)
-					return  false;
-				
-				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(APPlaboff < 0)
-					return  false;
-				
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (FCIoff < 0)
+					return false;
+
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C,
+						tbyte, (short) FCIoff, (short) tbyte[FCIoff - 1]);
+				if (FCIoff < 0)
+					return false;
+
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, tbyte,
+						(short) FCIdefoff, (short) tbyte[FCIdefoff - 1]);
+				if (Contentoff < 0)
+					return false;
+
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (DFAIDoff < 0)
+					return false;
+
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (APPlaboff < 0)
+					return false;
+
 				DFAID = new byte[tbyte[DFAIDoff - 1]];
 				System.arraycopy(tbyte, DFAIDoff, DFAID, 0, DFAID.length);
-				
-			}else{
+
+			} else {
 				return false;
 			}
 			Log.i(LOGTAG, "【AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
@@ -354,94 +374,106 @@ import android.util.Log;
 
 		if (selectdffci.isOkey()) {
 			tbyte = selectdffci.getBytes();
-			if(tbyte == null){
+			if (tbyte == null) {
 				return false;
 			}
 			toff = 0;
-			if((byte)0x6F == tbyte[toff++]){
-				if((byte)0x81 == tbyte[toff++]){
+			if ((byte) 0x6F == tbyte[toff++]) {
+				if ((byte) 0x81 == tbyte[toff++]) {
 					toff++;
 				}
-				toff = Utils.findValueOffByTag((short) 0xA5, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(toff < 0)
-					return  false;
+				toff = Utils.findValueOffByTag((short) 0xA5, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return false;
 				int toffA5 = toff;
 
-				//PDOL
-				toff = Utils.findValueOffByTag((short) 0x9F38, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(toff < 0)
-					return  false;
-				
-				
-				toff = Utils.findValueOffByTag((short) 0xBF0C, 
-						tbyte,(short)toffA5,(short)tbyte[toffA5-1]);
-				if(toff < 0)
-					return  false;
-				
-				toff = Utils.findValueOffByTag((short) 0x9F4D, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(toff < 0)
-					return  false;
-				
-				LOGSFI = tbyte[toff];
+				// PDOL
+				toff = Utils.findValueOffByTag((short) 0x9F38, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return false;
+
+				toff = Utils.findValueOffByTag((short) 0xBF0C, tbyte,
+						(short) toffA5, (short) tbyte[toffA5 - 1]);
+				if (toff < 0)
+					return false;
+
+				toff = Utils.findValueOffByTag((short) 0x9F4D, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return false;
+
+				TradeLogEntry = new byte[2];
+				TradeLogEntry[0] = tbyte[toff];
+				TradeLogEntry[1] = tbyte[toff + 1];
+
+				toff = Utils.findValueOffByTag((short) 0xDF4D, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff > 0) {
+					LoadLogEntry = new byte[2];
+					LoadLogEntry[0] = tbyte[toff];
+					LoadLogEntry[1] = tbyte[toff + 1];
+				}
 			}
-			Log.i(LOGTAG, "【LOGSFI】:" + LOGSFI);
+			Log.i(LOGTAG, "【TradeLogEntry】:" + Utils.toHexString(TradeLogEntry));
+			Log.i(LOGTAG, "【LoadLogEntry】:" + Utils.toHexString(LoadLogEntry));
+
 		}
 
 		return true;
 	}
-	
-	
-	public String SelectdefaultApplet(){
+
+	public String SelectdefaultApplet() {
 		byte[] tbyte = null;
 		int toff = 0;
-		if(TAG7816 == null){
-			Log.i(LOGTAG, "【SelectdefaultApplet.AID】: TAG7816 == null" );
+		if (TAG7816 == null) {
+			Log.i(LOGTAG, "【SelectdefaultApplet.AID】: TAG7816 == null");
 			return null;
 		}
 		Iso7816.Response ppseres = TAG7816.selectByName(PPSE);
 		if (ppseres.isOkey()) {
 			tbyte = ppseres.getBytes();
 			toff = 0;
-			
-			if((byte)0x6F == tbyte[toff++]){
-				if((byte)0x81 == tbyte[toff++]){
+
+			if ((byte) 0x6F == tbyte[toff++]) {
+				if ((byte) 0x81 == tbyte[toff++]) {
 					toff++;
 				}
-				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(FCIoff < 0)
-					return  null;
-				
-				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
-						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
-				if(FCIoff < 0)
-					return  null;
-				
-				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
-						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
-				if(Contentoff < 0)
-					return  null;
-				
-				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(DFAIDoff < 0)
-					return  null;
-				
-				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(APPlaboff < 0)
-					return  null;
-				
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (FCIoff < 0)
+					return null;
+
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C,
+						tbyte, (short) FCIoff, (short) tbyte[FCIoff - 1]);
+				if (FCIoff < 0)
+					return null;
+
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, tbyte,
+						(short) FCIdefoff, (short) tbyte[FCIdefoff - 1]);
+				if (Contentoff < 0)
+					return null;
+
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (DFAIDoff < 0)
+					return null;
+
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (APPlaboff < 0)
+					return null;
+
 				DFAID = new byte[tbyte[DFAIDoff - 1]];
 				System.arraycopy(tbyte, DFAIDoff, DFAID, 0, DFAID.length);
-				
-			}else{
+
+			} else {
 				return null;
 			}
-			Log.i(LOGTAG, "【SelectdefaultApplet.AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
+			Log.i(LOGTAG,
+					"【SelectdefaultApplet.AID】:"
+							+ Utils.toHexString(DFAID, 0, DFAID.length));
 		}
 		/*--------------------------------------------------------------*/
 		// select Main Application
@@ -449,27 +481,71 @@ import android.util.Log;
 		Iso7816.Response selectdffci = TAG7816.selectByName(DFAID);
 		Log.i(LOGTAG, "【SelectdefaultApplet.FCI】:" + selectdffci.toString());
 
-		if (!selectdffci.isOkey()) {
-			return null;
+		if (selectdffci.isOkey()) {
+			tbyte = selectdffci.getBytes();
+			if (tbyte == null) {
+				return null;
+			}
+			toff = 0;
+			if ((byte) 0x6F == tbyte[toff++]) {
+				if ((byte) 0x81 == tbyte[toff++]) {
+					toff++;
+				}
+				toff = Utils.findValueOffByTag((short) 0xA5, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return null;
+				int toffA5 = toff;
+
+				// PDOL
+				toff = Utils.findValueOffByTag((short) 0x9F38, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return null;
+
+				int toffBFOC = Utils.findValueOffByTag((short) 0xBF0C, tbyte,
+						(short) toffA5, (short) tbyte[toffA5 - 1]);
+				if (toffBFOC < 0)
+					return null;
+
+				toff = Utils.findValueOffByTag((short) 0x9F4D, tbyte,
+						(short) toffBFOC, (short) tbyte[toffBFOC - 1]);
+				if (toff < 0)
+					return null;
+
+				TradeLogEntry = new byte[2];
+				TradeLogEntry[0] = tbyte[toff];
+				TradeLogEntry[1] = tbyte[toff + 1];
+				Log.i(LOGTAG, "【TradeLogEntry】:" + Utils.toHexStringNoBlank(TradeLogEntry));
+
+				toff = Utils.findValueOffByTag((short) 0xDF4D, tbyte,
+						(short) toffBFOC, (short) tbyte[toffBFOC - 1]);
+				if (toff > 0) {
+					LoadLogEntry = new byte[2];
+					LoadLogEntry[0] = tbyte[toff];
+					LoadLogEntry[1] = tbyte[toff + 1];
+					Log.i(LOGTAG, "【LoadLogEntry】:" + Utils.toHexStringNoBlank(LoadLogEntry));
+				}
+			}
+
 		}
 		return selectdffci.toString();
 	}
-	
-	
-	public String CreditForLoad(Parcelable parcelable){
-		return CreditForLoad(parcelable,null);
+
+	public String CreditForLoad(Parcelable parcelable) {
+		return CreditForLoad(parcelable, null);
 	}
-	public String CreditForLoad(Parcelable parcelable, Resources res){
+
+	public String CreditForLoad(Parcelable parcelable, Resources res) {
 		final Tag tag = (Tag) parcelable;
-		if(tag == null){
-			return null ;
+		if (tag == null) {
+			return null;
 		}
 		final IsoDep isodep = IsoDep.get(tag);
 		if (isodep == null) {
 			return null;
 		}
-		
-		
+
 		TAG7816 = new Iso7816.Tag(isodep);
 		TAG7816.connect();
 		byte[] tbyte = null;
@@ -478,40 +554,40 @@ import android.util.Log;
 		if (ppseres.isOkey()) {
 			tbyte = ppseres.getBytes();
 			toff = 0;
-			
-			if((byte)0x6F == tbyte[toff++]){
-				if((byte)0x81 == tbyte[toff++]){
+
+			if ((byte) 0x6F == tbyte[toff++]) {
+				if ((byte) 0x81 == tbyte[toff++]) {
 					toff++;
 				}
-				short FCIoff = Utils.findValueOffByTag((short) 0xA5, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(FCIoff < 0)
-					return  null;
-				
-				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C, 
-						tbyte,(short)FCIoff,(short)tbyte[FCIoff-1]);
-				if(FCIoff < 0)
-					return  null;
-				
-				short Contentoff = Utils.findValueOffByTag((short) 0x61, 
-						tbyte,(short)FCIdefoff,(short)tbyte[FCIdefoff-1]);
-				if(Contentoff < 0)
-					return  null;
-				
-				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(DFAIDoff < 0)
-					return  null;
-				
-				short APPlaboff = Utils.findValueOffByTag((short) 0x50, 
-						tbyte,(short)Contentoff,(short)tbyte[Contentoff-1]);
-				if(APPlaboff < 0)
-					return  null;
-				
+				short FCIoff = Utils.findValueOffByTag((short) 0xA5, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (FCIoff < 0)
+					return null;
+
+				short FCIdefoff = Utils.findValueOffByTag((short) 0xBF0C,
+						tbyte, (short) FCIoff, (short) tbyte[FCIoff - 1]);
+				if (FCIoff < 0)
+					return null;
+
+				short Contentoff = Utils.findValueOffByTag((short) 0x61, tbyte,
+						(short) FCIdefoff, (short) tbyte[FCIdefoff - 1]);
+				if (Contentoff < 0)
+					return null;
+
+				short DFAIDoff = Utils.findValueOffByTag((short) 0x4F, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (DFAIDoff < 0)
+					return null;
+
+				short APPlaboff = Utils.findValueOffByTag((short) 0x50, tbyte,
+						(short) Contentoff, (short) tbyte[Contentoff - 1]);
+				if (APPlaboff < 0)
+					return null;
+
 				DFAID = new byte[tbyte[DFAIDoff - 1]];
 				System.arraycopy(tbyte, DFAIDoff, DFAID, 0, DFAID.length);
-				
-			}else{
+
+			} else {
 				return null;
 			}
 			Log.i(LOGTAG, "【AID】:" + Utils.toHexString(DFAID, 0, DFAID.length));
@@ -524,92 +600,120 @@ import android.util.Log;
 
 		if (selectdffci.isOkey()) {
 			tbyte = selectdffci.getBytes();
-			if(tbyte == null){
+			if (tbyte == null) {
 				return null;
 			}
 			toff = 0;
-			if((byte)0x6F == tbyte[toff++]){
-				if((byte)0x81 == tbyte[toff++]){
+			if ((byte) 0x6F == tbyte[toff++]) {
+				if ((byte) 0x81 == tbyte[toff++]) {
 					toff++;
 				}
-				toff = Utils.findValueOffByTag((short) 0xA5, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(toff < 0)
-					return  null;
+				toff = Utils.findValueOffByTag((short) 0xA5, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return null;
 				int toffA5 = toff;
 
-				//PDOL
-				toff = Utils.findValueOffByTag((short) 0x9F38, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(toff < 0)
-					return  null;
-				
-				
-				toff = Utils.findValueOffByTag((short) 0xBF0C, 
-						tbyte,(short)toffA5,(short)tbyte[toffA5-1]);
-				if(toff < 0)
-					return  null;
-				
-				toff = Utils.findValueOffByTag((short) 0x9F4D, 
-						tbyte,(short)toff,(short)tbyte[toff-1]);
-				if(toff < 0)
-					return  null;
-				
-				LOGSFI = tbyte[toff];
+				// PDOL
+				toff = Utils.findValueOffByTag((short) 0x9F38, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return null;
+
+				toff = Utils.findValueOffByTag((short) 0xBF0C, tbyte,
+						(short) toffA5, (short) tbyte[toffA5 - 1]);
+				if (toff < 0)
+					return null;
+
+				toff = Utils.findValueOffByTag((short) 0x9F4D, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff < 0)
+					return null;
+
+				TradeLogEntry = new byte[2];
+				TradeLogEntry[0] = tbyte[toff];
+				TradeLogEntry[1] = tbyte[toff + 1];
+
+				toff = Utils.findValueOffByTag((short) 0xDF4D, tbyte,
+						(short) toff, (short) tbyte[toff - 1]);
+				if (toff > 0) {
+					LoadLogEntry = new byte[2];
+					LoadLogEntry[0] = tbyte[toff];
+					LoadLogEntry[1] = tbyte[toff + 1];
+				}
 			}
-			Log.i(LOGTAG, "【LOGSFI】:" + LOGSFI);
+			Log.i(LOGTAG, "【TradeLogEntry】:" + Utils.toHexString(TradeLogEntry));
+			Log.i(LOGTAG, "【LoadLogEntry】:" + Utils.toHexString(LoadLogEntry));
+
 		}
 		return null;
 	}
 
-	public String sendAPDU(String cmd){
+	public String sendAPDU(String cmd) {
 		Iso7816.Response res = TAG7816.sendCmd(cmd);
 
 		return res.toString();
 	}
-	
-	public String sendAPDU(byte[] cmd){
+
+	public String sendAPDU(byte[] cmd) {
 		Iso7816.Response res = TAG7816.sendCmd(cmd);
 
 		return res.toString();
 	}
-	
+
 	public String getBalance() {
 		String strbalance;
 		Iso7816.Response resbalance = TAG7816.sendCmd("80CA9F7900");
 		if (!resbalance.isOkey() || resbalance.size() < 4) {
 			return null;
-		} 
+		}
 
 		int n = Utils.BCDtoInt(resbalance.getBytes(), 5, 4);
 		strbalance = Utils.toAmountString(n / 100.0f);
 		return strbalance;
 	}
-	
+
+	public String getPbocData(int index) {
+		String res = null;
+		switch (index) {
+		case INDEX_TRADE_LOGENTRY:
+			if (TradeLogEntry != null)
+				res = Utils.toHexStringNoBlank(TradeLogEntry);
+			break;
+		case INDEX_LOAD_LOGENTRY:
+			if (LoadLogEntry != null)
+				res = Utils.toHexStringNoBlank(LoadLogEntry);
+			break;
+		default:
+			break;
+		}
+		return res;
+	}
+
 	public String getTag(String ptag) {
 		String cmd = new String("80CA");
-		if(4 == ptag.length()){
+		if (4 == ptag.length()) {
 			cmd += ptag;
-		}else if(2 == ptag.length()){
+		} else if (2 == ptag.length()) {
 			cmd += new String("00");
 			cmd += ptag;
-		}else {
-			Log.i(LOGTAG, "【TAG】:tag err," +ptag);
+		} else {
+			Log.i(LOGTAG, "【TAG】:tag err," + ptag);
 			return null;
 		}
 		cmd += new String("00");
 		Iso7816.Response resbalance = TAG7816.sendCmd(cmd);
 		if (!resbalance.isOkey()) {
-			Log.i(LOGTAG, "【TAG】:Response err," +resbalance.getSw12());
+			Log.i(LOGTAG, "【TAG】:Response err," + resbalance.getSw12());
 			return null;
-		} 
+		}
 		String res = resbalance.toString();
 		int reslen = res.length();
 		int taglen = ptag.length();
 		int lenlen = 2;
-		if("81".equals(res.substring(taglen,taglen+2))){
+		if ("81".equals(res.substring(taglen, taglen + 2))) {
 			lenlen += 2;
 		}
-		return res.substring((taglen + lenlen),(reslen - 4));
-	}	
+		return res.substring((taglen + lenlen), (reslen - 4));
+	}
 }

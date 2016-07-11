@@ -9,6 +9,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -25,6 +26,8 @@ import javax.crypto.spec.DESedeKeySpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import android.util.Log;
+
 /**
  * 软件的方式 实现的密码学相关工具, 注意，使用此工具，必须将JDK jre\lib\security\下JAR local_policy.jar
  * US_export_policy.jar 包覆盖为安全Jar 包
@@ -33,11 +36,8 @@ import javax.crypto.spec.SecretKeySpec;
  */
 public class CryptographyUtil {
 	public static final String ENCRYPTION_ALGO = "DESede";
+	private static final String LOGTAG = new String("CyptographyUtil");
 
-	
-
-	
-	
 	private static byte[] transferKeyFrom16To24(byte[] key){
 		
 		if(key.length != 16){
@@ -288,5 +288,61 @@ public class CryptographyUtil {
 		Cipher c = Cipher.getInstance(ENCRYPTION_ALGO + "/ECB/NoPadding");
 		c.init(Cipher.ENCRYPT_MODE, sk);
 		return c.doFinal(data);
+	}
+	
+	public static String getSha1(String data) throws Exception {
+		MessageDigest digest = java.security.MessageDigest.getInstance("SHA-1");
+		digest.update(ByteUtil.hexStringToByteArray(data));
+		byte[] ipkmd = digest.digest();
+		String localIPKHash = ByteUtil.byteArrayToHexString(ipkmd);
+		return localIPKHash;
+	}
+	
+	public static String RSADecrypt(String pkeymoduls, String pkeyexp,
+			String encdata) throws Exception {
+		Log.i(LOGTAG, "【RSADecrypt】\nmoduls:"+pkeymoduls
+				+"\nexp:"+pkeyexp
+				+"\ndata:"+encdata);
+
+		byte[] pubkeymoduls = ByteUtil.hexStringToByteArray(pkeymoduls);
+		byte[] pubkeyexp = ByteUtil.hexStringToByteArray(pkeyexp);
+		
+		if((pubkeymoduls[0] & 0x80) == 0x80){
+			pubkeymoduls = ByteUtil.hexStringToByteArray("00"+pkeymoduls);
+		}
+		if((pubkeyexp[0] & 0x80) == 0x80){
+			pubkeyexp = ByteUtil.hexStringToByteArray("00"+pkeyexp);
+		}
+
+		BigInteger b1 = new BigInteger(pubkeymoduls);
+		BigInteger b2 = new BigInteger(pubkeyexp);
+
+		KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+		RSAPublicKeySpec keyspec = new RSAPublicKeySpec(b1, b2);
+		PublicKey pubkey = keyFactory.generatePublic(keyspec);
+
+		// 对数据解密密
+		Cipher cipher = Cipher.getInstance(keyFactory.getAlgorithm()
+				+ "/None/NoPadding", getProvierName());
+
+		cipher.init(Cipher.DECRYPT_MODE, pubkey);
+
+		byte[] decodedata = cipher.doFinal(ByteUtil
+				.hexStringToByteArray(encdata));
+		return ByteUtil.byteArrayToHexString(decodedata);
+	}
+
+	private static String PROVIDER_NAME = "BC";
+	private static boolean ISDECIDE = false;
+
+	public static String getProvierName() {
+		if (ISDECIDE && Security.getProvider(PROVIDER_NAME) != null) {
+			return PROVIDER_NAME;
+		} else {
+			Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+			ISDECIDE = true;
+			return PROVIDER_NAME;
+		}
+
 	}
 }

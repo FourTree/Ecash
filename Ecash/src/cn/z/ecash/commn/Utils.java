@@ -61,6 +61,8 @@ public class Utils {
      * @return The hex string.
      */
     public static String toHexString( byte[] ba ) {
+    	if(null == ba)
+    		return null;
         int length = ba.length;
         char[] buf = new char[length * 3];
         for (int i = 0, j = 0, k; i < length; ) {

@@ -14,6 +14,7 @@ import java.util.Map;
 
 import cn.z.ecash.nfc.CardManager;
 import cn.z.ecash.nfc.PbocManager;
+import cn.z.ecash.nfc.PosManager;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -48,8 +49,6 @@ public class ActivityLoad extends Activity {
 	private PbocManager pbocmanager = null;
 	private String balance;
 
-	private static final String TAG = "ActivityLoad";
-
 	private String pattern = "000000000000";
 	private DecimalFormat df;
 	private DateFormat dfdate;
@@ -58,6 +57,8 @@ public class ActivityLoad extends Activity {
 
 	private Map<String, String> RRDataList = new HashMap();
 	private String RRAUTHDATA;//静态认证数据
+	
+	private String PBOCAID = null;
 	private String AIP; // 应用交互特征
 	private String AFL; // 应用文件定位器
 	private byte[] FCIMsg = null;
@@ -167,8 +168,7 @@ public class ActivityLoad extends Activity {
 					.setText("input wrong!!! please input the right nunber...");
 			return;
 		}
-		String strinputmoney = etInput.getText().toString();
-		int result = processcreditforload(getIntent());
+		int result = processcreditforload();
 		if (result < 0) {
 			// 充值异常
 			showDialog("充值失败", "未知错误");
@@ -179,7 +179,7 @@ public class ActivityLoad extends Activity {
 		}
 	}
 
-	protected int processcreditforload(Intent intent) {
+	protected int processcreditforload() {
 		int loadresult = -13;
 		boolean openFlag = false;
 		pbocmanager = PbocManager.getInstance();
@@ -194,6 +194,7 @@ public class ActivityLoad extends Activity {
 
 		openFlag = true;
 		Log.i(LOGTAG, "【start】" + fci);
+		PBOCAID = pbocmanager.getAID();
 
 		balance = pbocmanager.getBalance();
 		Log.i(LOGTAG, "【balacne】" + balance);
@@ -281,6 +282,13 @@ public class ActivityLoad extends Activity {
 			} else {
 				return loadresult;
 			}
+			
+			// 脱机数据认证
+			offlineAuth(AIP);
+			
+			
+			
+			
 			// 得到标签95的值
 			if (continueFlag) {
 				TVR = parseTag95();
@@ -382,7 +390,7 @@ public class ActivityLoad extends Activity {
 				return loadresult;
 			}
 		} catch (Exception e) {
-			Log.e(TAG, "充值时异常", e);
+			Log.e(LOGTAG, "充值时异常", e);
 		}
 		return loadresult;
 	}
@@ -393,7 +401,7 @@ public class ActivityLoad extends Activity {
 	 * @throws Exception
 	 */
 	private void exeCardBankScript() throws Exception {
-		Log.v(TAG, "执行发卡行脚本");
+		Log.v(LOGTAG, "执行发卡行脚本");
 		List<String> scriptStr = new ArrayList<String>();
 
 		int scriptlen = 0;
@@ -414,27 +422,27 @@ public class ActivityLoad extends Activity {
 								.get(i))));
 
 				String resultStr = Utils.toHexStringNoBlank(result);
-				Log.v(TAG, "执行发卡行脚本命令" + scriptStr.get(i) + "反馈内容:"
+				Log.v(LOGTAG, "执行发卡行脚本命令" + scriptStr.get(i) + "反馈内容:"
 						+ resultStr);
 				if (result.length == 0 || result == null) {
-					Log.v(TAG, "执行发卡行脚本命令" + scriptStr.get(i) + "反馈为空");
+					Log.v(LOGTAG, "执行发卡行脚本命令" + scriptStr.get(i) + "反馈为空");
 					continueFlag = false;
 					break;
 				}
 				if ("9000".equals(resultStr)) {
-					Log.v(TAG, "执行发卡行脚本命令" + scriptStr.get(i) + "反馈成功");
+					Log.v(LOGTAG, "执行发卡行脚本命令" + scriptStr.get(i) + "反馈成功");
 					continue;
 				} else { // 一个脚本执行失败即停止循环，但交易继续
-					Log.v(TAG, "执行脚本命令反馈失败");
+					Log.v(LOGTAG, "执行脚本命令反馈失败");
 					continueFlag = false;
 					break;
 				}
 			}
 		} catch (NumberFormatException e) {
-			Log.e(TAG, "执行脚本命令失败", e);
+			Log.e(LOGTAG, "执行脚本命令失败", e);
 			throw e;
 		} catch (Exception e) {
-			Log.e(TAG, "执行脚本命令失败", e);
+			Log.e(LOGTAG, "执行脚本命令失败", e);
 			throw e;
 		}
 	}
@@ -445,7 +453,7 @@ public class ActivityLoad extends Activity {
 	 * @throws Exception
 	 */
 	private void doLoadEnd() throws Exception {
-		Log.v(TAG, "交易结束处理");
+		Log.v(LOGTAG, "交易结束处理");
 		StringBuffer sbEndACComd = new StringBuffer();
 		sbEndACComd.append(getResources().getString(R.string.ENDACCLA));
 		sbEndACComd.append(getResources().getString(R.string.ENDACINS));
@@ -519,22 +527,22 @@ public class ActivityLoad extends Activity {
 		sbEndACComd.append(dataLen);
 		sbEndACComd.append(sbEndACData);
 		sbEndACComd.append("00");
-		Log.v(TAG, "交易结束处理指令:" + sbEndACComd.toString());
+		Log.v(LOGTAG, "交易结束处理指令:" + sbEndACComd.toString());
 		try {
 			byte[] gacResponseBytes = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(Utils.bytesFromHexStringNoBlank(sbEndACComd
 							.toString())));
 
-			Log.v(TAG, "交易结束处理指令反馈内容:" + Utils.toHexString(gacResponseBytes));
+			Log.v(LOGTAG, "交易结束处理指令反馈内容:" + Utils.toHexString(gacResponseBytes));
 			if (gacResponseBytes.length <= 2) {
-				Log.v(TAG, "交易结束处理指令反馈失败,指令反馈为空");
+				Log.v(LOGTAG, "交易结束处理指令反馈失败,指令反馈为空");
 				continueFlag = false;
 			}
 		} catch (NumberFormatException e) {
-			Log.e(TAG, "发送交易结束指令异常", e);
+			Log.e(LOGTAG, "发送交易结束指令异常", e);
 			throw e;
 		} catch (Exception e) {
-			Log.e(TAG, "发送交易结束指令异常", e);
+			Log.e(LOGTAG, "发送交易结束指令异常", e);
 			throw e;
 		}
 	}
@@ -546,7 +554,7 @@ public class ActivityLoad extends Activity {
 	 */
 	private void externalAuth() throws Exception {
 		boolean result = true;
-		Log.v(TAG, "外部认证");
+		Log.v(LOGTAG, "外部认证");
 		StringBuffer sbAuthCommond = new StringBuffer();
 		sbAuthCommond.append(getResources().getString(R.string.externalAuth));
 
@@ -560,7 +568,7 @@ public class ActivityLoad extends Activity {
 		String authDataLen = sb.toString();
 		sbAuthCommond.append(authDataLen);
 		sbAuthCommond.append(authData);
-		Log.v(TAG, "外部认证指令:" + sbAuthCommond.toString());
+		Log.v(LOGTAG, "外部认证指令:" + sbAuthCommond.toString());
 
 		try {
 			byte[] authResult = null;
@@ -568,7 +576,7 @@ public class ActivityLoad extends Activity {
 					.sendAPDU(Utils.bytesFromHexStringNoBlank(sbAuthCommond
 							.toString())));
 			if (authResult.length == 0 || authResult == null) {
-				Log.v(TAG, "外部认证指令反馈为空，外部认证失败");
+				Log.v(LOGTAG, "外部认证指令反馈为空，外部认证失败");
 				byte5 = "C0";// 发卡行认证失败，重置TVR btye5
 				TVR = TVR.substring(TVR.length() - 2);
 				TVR = TVR + byte5;
@@ -579,17 +587,17 @@ public class ActivityLoad extends Activity {
 					byte5 = "C0";// 发卡行认证失败，重置TVR btye5
 					TVR = TVR.substring(TVR.length() - 2);
 					TVR = TVR + byte5;
-					Log.v(TAG, "外部认证指令反馈失败，反馈内容:" + resultStr);
+					Log.v(LOGTAG, "外部认证指令反馈失败，反馈内容:" + resultStr);
 					continueFlag = false;
 				} else {
-					Log.v(TAG, "外部认证成功");
+					Log.v(LOGTAG, "外部认证成功");
 				}
 			}
 		} catch (NumberFormatException e) {
-			Log.e(TAG, "外部认证异常", e);
+			Log.e(LOGTAG, "外部认证异常", e);
 			throw e;
 		} catch (Exception e) {
-			Log.e(TAG, "外部认证异常", e);
+			Log.e(LOGTAG, "外部认证异常", e);
 			throw e;
 		}
 	}
@@ -602,40 +610,40 @@ public class ActivityLoad extends Activity {
 	 * @throws Exception
 	 */
 	private void sendAndParseAC(String commond) throws Exception {
-		Log.v(TAG, "发送GENERATE AC指令");
+		Log.v(LOGTAG, "发送GENERATE AC指令");
 		try {
 			byte[] gacResponseBytes = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(Utils.bytesFromHexStringNoBlank(commond)));
 
 			Log.d(
-					TAG,
+					LOGTAG,
 					"GENERATE AC指令返回值="
 							+ Utils.toHexStringNoBlank(gacResponseBytes));
 			if (gacResponseBytes.length > 2) {
 				String hexStrGAC = Utils.toHexStringNoBlank(gacResponseBytes);
 				hexStrGAC = hexStrGAC.substring(0, hexStrGAC.length() - 4);
-				Log.v(TAG, "GENERATE AC指令反馈成功，反馈内容:" + hexStrGAC);
+				Log.v(LOGTAG, "GENERATE AC指令反馈成功，反馈内容:" + hexStrGAC);
 				// 密文信息数据
 				tag9F27value = hexStrGAC.substring(4, 6);
-				Log.v(TAG, "密文信息数据:" + tag9F27value);
+				Log.v(LOGTAG, "密文信息数据:" + tag9F27value);
 				// 应用交易计数器（ATC）
 				tag9F36value = hexStrGAC.substring(6, 10);
-				Log.v(TAG, "应用交易计数器（ATC）:" + tag9F36value);
+				Log.v(LOGTAG, "应用交易计数器（ATC）:" + tag9F36value);
 				// 应用密文（AC）
 				tag9F26value = hexStrGAC.substring(10, 26);
-				Log.v(TAG, "应用密文（AC）:" + tag9F26value);
+				Log.v(LOGTAG, "应用密文（AC）:" + tag9F26value);
 				// 发卡行应用数据
 				tag9F10value = hexStrGAC.substring(26);
-				Log.v(TAG, "发卡行应用数据:" + tag9F10value);
+				Log.v(LOGTAG, "发卡行应用数据:" + tag9F10value);
 			} else {
-				Log.v(TAG, "GENERATE AC指令反馈失败，指令返回为空");
+				Log.v(LOGTAG, "GENERATE AC指令反馈失败，指令返回为空");
 				continueFlag = false;
 			}
 		} catch (NumberFormatException e) {
-			Log.e(TAG, "发送GENERATE AC指令异常", e);
+			Log.e(LOGTAG, "发送GENERATE AC指令异常", e);
 			throw e;
 		} catch (Exception e) {
-			Log.e(TAG, "发送GENERATE AC指令异常", e);
+			Log.e(LOGTAG, "发送GENERATE AC指令异常", e);
 			throw e;
 		}
 	}
@@ -646,7 +654,7 @@ public class ActivityLoad extends Activity {
 	 * @return GENERATE AC 指令
 	 */
 	private String getGACCommond() {
-		Log.v(TAG, "根据卡片风险管理数据对象列表1 CDOL1 [8C]组织GENERATE AC 指令");
+		Log.v(LOGTAG, "根据卡片风险管理数据对象列表1 CDOL1 [8C]组织GENERATE AC 指令");
 		StringBuffer sbAC = new StringBuffer();
 		// cla
 		sbAC.append(getResources().getString(R.string.ACCLA));
@@ -659,7 +667,7 @@ public class ActivityLoad extends Activity {
 
 		StringBuffer sbACData = new StringBuffer();
 		String tag8Cvalue = RRDataList.get(getResources().getString(R.string.tag8C));
-		Log.v(TAG, "卡片风险管理数据对象列表1 CDOL1 [8C]的值:" + tag8Cvalue);
+		Log.v(LOGTAG, "卡片风险管理数据对象列表1 CDOL1 [8C]的值:" + tag8Cvalue);
 		if (tag8Cvalue != null) {
 			// 授权金额9F02
 			if (tag8Cvalue.contains(getResources().getString(R.string.tag9F02))) {
@@ -729,7 +737,7 @@ public class ActivityLoad extends Activity {
 		// data
 		sbAC.append(sbACData);
 		sbAC.append("00");
-		Log.v(TAG, "GENERATE AC 指令:" + sbAC.toString());
+		Log.v(LOGTAG, "GENERATE AC 指令:" + sbAC.toString());
 		return sbAC.toString();
 	}
 
@@ -740,11 +748,11 @@ public class ActivityLoad extends Activity {
 	 * @throws Exception
 	 */
 	private String parseTag95() throws Exception {
-		Log.v(TAG, "获得终端验证结果");
+		Log.v(LOGTAG, "获得终端验证结果");
 		StringBuffer sbTVR = new StringBuffer();
 		// 字节1-------start
 		byte1 = "80";
-		Log.v(TAG, "终端验证结果字节1:" + byte1);
+		Log.v(LOGTAG, "终端验证结果字节1:" + byte1);
 		sbTVR.append(byte1); // 充值不做DDA认证，TVR字节1的b8位为1，其他位为0（其中b5,即卡片出现在终端异常文件中因为没有终端异常文件接口所以置0）
 		// 字节1-------end
 
@@ -763,26 +771,26 @@ public class ActivityLoad extends Activity {
 		byte[] atcbytes = null;
 		try {
 			// 终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器[9F13]值
-			Log.v(TAG, "终端发送取数据（GET DATA）命令80CA9F1300读取卡片中的上次联机ATC寄存器值");
+			Log.v(LOGTAG, "终端发送取数据（GET DATA）命令80CA9F1300读取卡片中的上次联机ATC寄存器值");
 			atcbytes = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(Utils.bytesFromHexStringNoBlank("80CA9F1300")));
 
 		} catch (NumberFormatException e) {
-			Log.e(TAG, "终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器值", e);
+			Log.e(LOGTAG, "终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器值", e);
 			throw e;
 		} catch (Exception e) {
-			Log.e(TAG, "终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器值", e);
+			Log.e(LOGTAG, "终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器值", e);
 			throw e;
 		}
 
 		if (atcbytes.length > 2) {
 			String hexstr = Utils.toHexString(atcbytes);
-			Log.v(TAG, "卡片中的上次联机ATC寄存器值" + hexstr);
+			Log.v(LOGTAG, "卡片中的上次联机ATC寄存器值" + hexstr);
 			if ("0000".equals(hexstr.substring(6))) {
 				TVRByte2 = TVRByte2 + 8;
 			}
 		} else {
-			Log.v(TAG, "终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器值失败，返回值为空");
+			Log.v(LOGTAG, "终端发送取数据（GET DATA）命令读取卡片中的上次联机ATC寄存器值失败，返回值为空");
 			continueFlag = false;
 		}
 		StringBuffer sb = new StringBuffer();
@@ -793,31 +801,165 @@ public class ActivityLoad extends Activity {
 			sb.append(Integer.toHexString(TVRByte2));
 		}
 		byte2 = sb.toString();
-		Log.v(TAG, "终端验证结果字节2:" + byte2);
+		Log.v(LOGTAG, "终端验证结果字节2:" + byte2);
 		sbTVR.append(byte2);
 		// 字节2-------end
 
 		// 字节3-------start
 		byte3 = "04";
-		Log.v(TAG, "终端验证结果字节3:" + byte3);
+		Log.v(LOGTAG, "终端验证结果字节3:" + byte3);
 		sbTVR.append(byte3);// 字节3中b3位为1，即输入联机pin，其他位为0
 		// 字节3-------end
 
 		// 字节4-------start
 		byte4 = "08";
-		Log.v(TAG, "终端验证结果字节4:" + byte4);
+		Log.v(LOGTAG, "终端验证结果字节4:" + byte4);
 		sbTVR.append(byte4);// 字节4中b4位为1，即商户要求联机交易，其他位为0
 		// 字节4-------end
 
 		// 字节5-------start
 		byte5 = "80";
-		Log.v(TAG, "终端验证结果字节5:" + byte5);
+		Log.v(LOGTAG, "终端验证结果字节5:" + byte5);
 		sbTVR.append(byte5);// 字节5中b8位为1，即使用缺省TDOL（其中b7位，即发卡行认证失败位先置0，之后会重置）
 		// 字节5-------end
-		Log.v(TAG, "终端验证结果:" + sbTVR.toString());
+		Log.v(LOGTAG, "终端验证结果:" + sbTVR.toString());
 		return sbTVR.toString();
 	}
+	/**
+	 * 脱机数据认证
+	 * @param pAIP 
+	 * 字节 1： 位 8： 1=RFU
+	 * 位 7： 1=支持 SDA
+	 * 位 6： 1=支持 DDA
+	 * 位 5： 1=支持持卡人认证
+	 * 位 4： 1=执行终端风险管理
+	 * 位 3： 1=支持发卡行认证
+	 * 位 2： RFU（ 0）
+	 * 位 1： 1=支持 CDA
+	 * 字节 2： RFU（ “00” ）
+	 * @throws Exception
+	 */
+	private void offlineAuth(String pAIP) throws Exception {
+		String CAindex = RRDataList.get(getResources().getString(R.string.tag8F));
+		if(CAindex == null){
+			Log.i(LOGTAG, "【offlinAuth】:记录文件错误，没有CA公钥索引");
+			return;
+		}
+		String CAPublickeyModuls = PosManager.getCAModuls(PBOCAID.substring(0,10), CAindex);
+		String CAPublickeyExp = PosManager.getCAExp(PBOCAID.substring(0,10), CAindex);
+		Log.i(LOGTAG, "【offlinAuth】:CA公钥模长\n" + CAPublickeyModuls
+				+"CAg公钥指数"+CAPublickeyExp);
 
+		
+		String IPKCertDec = CryptographyUtil.RSADecrypt(CAPublickeyModuls, CAPublickeyExp,
+				RRDataList.get(getResources().getString(R.string.tag90)));
+		if (!IPKCertDec.startsWith("6A")) {
+			Log.i(LOGTAG, "【offlinAuth】:发卡行公钥证书解密错误，不是以6A开始\n" + IPKCertDec);
+			return;
+		}
+		if (!IPKCertDec.endsWith("BC")) {
+			Log.i(LOGTAG, "【offlinAuth】:发卡行公钥证书解密错误，不是以BC结尾\n" + IPKCertDec);
+			return;
+		}
+		Log.i(LOGTAG, "【offlinAuth】:IPK公钥证书明文\n" + IPKCertDec);
+		int certlen = IPKCertDec.length();
+		String IPKHash_Card = IPKCertDec.substring((certlen - 42),
+				(certlen - 2));
+		String IPKModuls =IPKCertDec.substring(30, (certlen - 42))+ RRDataList.get(getResources().getString(R.string.tag92));
+		String IPKExp = RRDataList.get(getResources().getString(R.string.tag9F32));
+		String IPKHashData = IPKCertDec.substring(2, (certlen - 42))
+				+ RRDataList.get(getResources().getString(R.string.tag92))
+				+ IPKExp;
+		Log.i(LOGTAG, "【offlinAuth】:IPK公钥证书Hash元数据\n" + IPKHashData);
+		String tmpHash = CryptographyUtil.getSha1(IPKHashData);
+		if (!tmpHash.equals(IPKHash_Card)) {
+			Log.i(LOGTAG, "【offlinAuth】:发卡行公钥证书Hash检验失败\n期望值:" + IPKHash_Card
+					+ "\n实际值:" + tmpHash);
+			return;
+		}
+		Log.i(LOGTAG, "【offlinAuth】:发卡行公钥证书Hash检验成功\n期望值:" + IPKHash_Card
+				+ "\n实际值:" + tmpHash);
+		
+		String ICCPKCertDec = CryptographyUtil.RSADecrypt(IPKModuls, IPKExp,
+				RRDataList.get(getResources().getString(R.string.tag9F46)));
+		if (!ICCPKCertDec.startsWith("6A")) {
+			Log.i(LOGTAG, "【offlinAuth】:IC卡公钥证书解密错误，不是以6A开始\n" + IPKCertDec);
+			return;
+		}
+		if (!ICCPKCertDec.endsWith("BC")) {
+			Log.i(LOGTAG, "【offlinAuth】:IC卡公钥证书解密错误，不是以BC结尾\n" + IPKCertDec);
+			return;
+		}
+		Log.i(LOGTAG, "【offlinAuth】:IC卡公钥证书明文\n" + ICCPKCertDec);
+		certlen = ICCPKCertDec.length();
+		String ICCPKHash_Card = ICCPKCertDec.substring((certlen - 42),
+				(certlen - 2));
+		String ICCPKModuls =ICCPKCertDec.substring(42, (certlen - 42))+ RRDataList.get(getResources().getString(R.string.tag9F48));
+		String ICCPKExp = RRDataList.get(getResources().getString(R.string.tag9F47));
+		
+		String ICCPKHashData = ICCPKCertDec.substring(2, (certlen - 42))
+				+ RRDataList.get(getResources().getString(R.string.tag9F48))
+				+ ICCPKExp
+				+ RRAUTHDATA
+				+ pAIP;
+		
+		Log.i(LOGTAG, "【offlinAuth】:IC卡公钥证书Hash元数据\n" + ICCPKHashData);
+		tmpHash = CryptographyUtil.getSha1(ICCPKHashData);
+		if (!tmpHash.equals(ICCPKHash_Card)) {
+			Log.i(LOGTAG, "【offlinAuth】:IC卡公钥证书Hash检验失败\n期望值:" + ICCPKHash_Card
+					+ "\n实际值:" + tmpHash);
+			return;
+		}
+		Log.i(LOGTAG, "【offlinAuth】:IC卡公钥证书Hash检验成功\n期望值:" + ICCPKHash_Card
+				+ "\n实际值:" + tmpHash);
+		
+		//如果不存在tag=0x9F4B，需要发送内部认证指令。
+		if(null == RRDataList.get(getResources().getString(R.string.tag9F4B))){
+			byte[] authresbytes = Utils.bytesFromHexStringNoBlank(pbocmanager
+					.sendAPDU(new String("0088000004"+tag9F37value)));
+			int toff = 0;
+			if(authresbytes[toff++] != (byte)0x80){
+				Log.e(LOGTAG, "【offlinAuth】:内部认证指令返回错误\n" + Utils.toHexStringNoBlank(authresbytes));
+				return ;
+			}else{
+				String authresstr = Utils.toHexStringNoBlank(authresbytes);
+				if(authresbytes[toff] == (byte)0x81){
+					toff++;
+				}
+				int authreslen = 0xFF & authresbytes[toff++];
+				RRDataList.put(getResources().getString(R.string.tag9F4B),authresstr.substring(toff*2,toff*2 + authreslen*2));
+				Log.i(LOGTAG, "【offlinAuth】:内部认证指令返回\n" + authresstr);
+			}
+		}
+		
+		String DDADataDec = CryptographyUtil.RSADecrypt(ICCPKModuls, ICCPKExp,
+				RRDataList.get(getResources().getString(R.string.tag9F4B)));
+		if (!ICCPKCertDec.startsWith("6A")) {
+			Log.i(LOGTAG, "【offlinAuth】:DDA签名解密错误，不是以6A开始\n" + DDADataDec);
+			return;
+		}
+		if (!ICCPKCertDec.endsWith("BC")) {
+			Log.i(LOGTAG, "【offlinAuth】:DDA签名解密错误，不是以BC结尾\n" + DDADataDec);
+			return;
+		}
+		Log.i(LOGTAG, "【offlinAuth】:DDA签名明文\n" + DDADataDec);
+		certlen = DDADataDec.length();
+		String DDAHash_Card = DDADataDec.substring((certlen - 42),
+				(certlen - 2));
+		
+		String DDAHashData = DDADataDec.substring(2, (certlen - 42))
+				+ tag9F37value;
+		
+		Log.i(LOGTAG, "【offlinAuth】:DDA签名Hash元数据\n" + DDAHashData);
+		tmpHash = CryptographyUtil.getSha1(DDAHashData);
+		if (!tmpHash.equals(DDAHash_Card)) {
+			Log.i(LOGTAG, "【offlinAuth】:DDA签名Hash检验失败\n期望值:" + DDAHash_Card
+					+ "\n实际值:" + tmpHash);
+			return;
+		}
+		Log.i(LOGTAG, "【offlinAuth】:DDA签名Hash检验成功\n期望值:" + DDAHash_Card
+				+ "\n实际值:" + tmpHash);
+	}
 	/**
 	 * 发送read record指令并解析响应
 	 * 
@@ -829,7 +971,7 @@ public class ActivityLoad extends Activity {
 	 * @throws Exception
 	 */
 	private void sendAndParseRR(String pAFL) throws Exception {
-		Log.v(TAG, "发送read record指令");
+		Log.v(LOGTAG, "发送read record指令");
 		DecimalFormat df;
 		String tmpvalue;
 		String tmptag;
@@ -872,7 +1014,7 @@ public class ActivityLoad extends Activity {
 					}
 					if (record.length > 2) {// 成功响应
 						List<TLVEntity> list = Utils.getNodes(str3);
-						Log.v(TAG, "读取应用数据 SFI = " + SFI + ",RecordNum = "
+						Log.v(LOGTAG, "读取应用数据 SFI = " + SFI + ",RecordNum = "
 								+ P1);
 						for (int k = 0; k < list.size(); k++) {
 							tmptag = Utils.intToHexString(list.get(k).getTag());
@@ -881,7 +1023,7 @@ public class ActivityLoad extends Activity {
 							RRDataList.put(tmptag, tmpvalue);
 						}
 					} else {
-						Log.v(TAG, "读应用数据 SFI = " + SFI + ",RecordNum = "
+						Log.v(LOGTAG, "读应用数据 SFI = " + SFI + ",RecordNum = "
 								+ P1 + "指令反馈失败，反馈结果为空");
 						// continueFlag = false;
 						// failReasion = "读取个人化数据失败。";
@@ -890,9 +1032,9 @@ public class ActivityLoad extends Activity {
 				}
 				i = i + 8;
 			}
-			Log.i(TAG, "记录文件信息:\n" + RRDataList.toString());
+			Log.i(LOGTAG, "记录文件信息:\n" + RRDataList.toString());
 		} catch (Exception e) {
-			Log.e(TAG, "发送read record指令并解析响应 异常", e);
+			Log.e(LOGTAG, "发送read record指令并解析响应 异常", e);
 			throw e;
 		}
 	}
@@ -904,25 +1046,25 @@ public class ActivityLoad extends Activity {
 	 * @throws Exception
 	 */
 	private void sendGPOData(byte[] gpocom) throws Exception {
-		Log.v(TAG, "发送GPO指令");
+		Log.v(LOGTAG, "发送GPO指令");
 		try {
 			byte[] gpresponse = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(gpocom));
 
 			String hexString = Utils.toHexStringNoBlank(gpresponse);
-			Log.v(TAG, "GPO指令反馈内容:" + hexString);
+			Log.v(LOGTAG, "GPO指令反馈内容:" + hexString);
 			if (hexString.length() > 4) {
-				Log.v(TAG, "GPO指令响应成功");
+				Log.v(LOGTAG, "GPO指令响应成功");
 				AIP = hexString.substring(4, 8);
 				AFL = hexString.substring(8);
-				Log.v(TAG, "终端读取AIP和AFL,AIP=" + AIP + ",AFL=" + AFL);
+				Log.v(LOGTAG, "终端读取AIP和AFL,AIP=" + AIP + ",AFL=" + AFL);
 			} else {
 				// 返回6985的处理，卡片不支持该应用
-				Log.v(TAG, "GPO指令响应失败");
+				Log.v(LOGTAG, "GPO指令响应失败");
 				continueFlag = false;
 			}
 		} catch (Exception e) {
-			Log.e(TAG, "发送GPO指令异常", e);
+			Log.e(LOGTAG, "发送GPO指令异常", e);
 			throw e;
 		}
 	}
@@ -935,7 +1077,7 @@ public class ActivityLoad extends Activity {
 	 * @return byte[] GPO指令
 	 */
 	private byte[] getGPOData(List<String> list) {
-		Log.v(TAG, "根据PDOL数据包含内容组织GPO指令");
+		Log.v(LOGTAG, "根据PDOL数据包含内容组织GPO指令");
 
 		StringBuffer gpodata = new StringBuffer();
 		gpodata.append(getResources().getString(R.string.GPOCLA));
@@ -1059,7 +1201,7 @@ public class ActivityLoad extends Activity {
 			gpodata.append("00");
 		}
 		gpodata.append("00");
-		Log.v(TAG, "GPO指令:" + gpodata.toString());
+		Log.v(LOGTAG, "GPO指令:" + gpodata.toString());
 		return Utils.bytesFromHexStringNoBlank(gpodata.toString());
 	}
 
@@ -1083,57 +1225,57 @@ public class ActivityLoad extends Activity {
 	 * @return PDOL数据中标签集合
 	 */
 	private List<String> pasePdol() {
-		Log.v(TAG, "解析PDOL数据");
+		Log.v(LOGTAG, "解析PDOL数据");
 		List<String> pdolcontext = null;
 		if (PDOLMsg != null) {
 			pdolcontext = new ArrayList<String>();
 			String pdoltemp = Utils.toHexStringNoBlank(PDOLMsg);
 			if (pdoltemp.contains(getResources().getString(R.string.tag9F66))) {
-				Log.v(TAG, "PDOL数据包含9F66:终端交易属性");
+				Log.v(LOGTAG, "PDOL数据包含9F66:终端交易属性");
 				pdolcontext.add(getResources().getString(R.string.tag9F66));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag9F7A))) {
-				Log.v(TAG, "PDOL数据包含9F7A:电子现金终端支持指示器");
+				Log.v(LOGTAG, "PDOL数据包含9F7A:电子现金终端支持指示器");
 				pdolcontext.add(getResources().getString(R.string.tag9F7A));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag9F7B))) {
-				Log.v(TAG, "PDOL数据包含9F7B:电子现金终端交易限额");
+				Log.v(LOGTAG, "PDOL数据包含9F7B:电子现金终端交易限额");
 				pdolcontext.add(getResources().getString(R.string.tag9F7B));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag9F02))) {
-				Log.v(TAG, "PDOL数据包含9F02:授权金额");
+				Log.v(LOGTAG, "PDOL数据包含9F02:授权金额");
 				pdolcontext.add(getResources().getString(R.string.tag9F02));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag9F03))) {
-				Log.v(TAG, "PDOL数据包含9F03:其它金额");
+				Log.v(LOGTAG, "PDOL数据包含9F03:其它金额");
 				pdolcontext.add(getResources().getString(R.string.tag9F03));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag9F1A))) {
-				Log.v(TAG, "PDOL数据包含9F1A:终端国家代码");
+				Log.v(LOGTAG, "PDOL数据包含9F1A:终端国家代码");
 				pdolcontext.add(getResources().getString(R.string.tag9F1A));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag95))) {
-				Log.v(TAG, "PDOL数据包含95:终端验证结果");
+				Log.v(LOGTAG, "PDOL数据包含95:终端验证结果");
 				pdolcontext.add(getResources().getString(R.string.tag95));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag5F2A))) {
-				Log.v(TAG, "PDOL数据包含5F2A:交易货币代码");
+				Log.v(LOGTAG, "PDOL数据包含5F2A:交易货币代码");
 				pdolcontext.add(getResources().getString(R.string.tag5F2A));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag9A))) {
-				Log.v(TAG, "PDOL数据包含9A:交易日期");
+				Log.v(LOGTAG, "PDOL数据包含9A:交易日期");
 				pdolcontext.add(getResources().getString(R.string.tag9A));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag9C))) {
-				Log.v(TAG, "PDOL数据包含9C:交易类型");
+				Log.v(LOGTAG, "PDOL数据包含9C:交易类型");
 				pdolcontext.add(getResources().getString(R.string.tag9C));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tag9F37))) {
-				Log.v(TAG, "PDOL数据包含9F37:终端不可预知数据");
+				Log.v(LOGTAG, "PDOL数据包含9F37:终端不可预知数据");
 				pdolcontext.add(getResources().getString(R.string.tag9F37));
 			}
 			if (pdoltemp.contains(getResources().getString(R.string.tagDF60))) {
-				Log.v(TAG, "PDOL数据包含9F37:终端不可预知数据");
+				Log.v(LOGTAG, "PDOL数据包含9F37:终端不可预知数据");
 				pdolcontext.add(getResources().getString(R.string.tagDF60));
 			}
 		}
@@ -1144,15 +1286,15 @@ public class ActivityLoad extends Activity {
 	 * 重发select指令，获得PDOL数据
 	 */
 	private void reSendSelect() {
-		Log.v(TAG, "重发select指令获得PDOL数据");
+		Log.v(LOGTAG, "重发select指令获得PDOL数据");
 		try {
 			byte[] fcibytes = Utils.bytesFromHexStringNoBlank(pbocmanager
 					.sendAPDU(Utils.bytesFromHexStringNoBlank(getResources()
 							.getString(R.string.selectcmd))));
 
 			if (fcibytes.length > 2) {
-				Log.v(TAG, "重发select指令响应成功");
-				Log.v(TAG, "select指令响应内容:" + Utils.toHexString(fcibytes));
+				Log.v(LOGTAG, "重发select指令响应成功");
+				Log.v(LOGTAG, "select指令响应内容:" + Utils.toHexString(fcibytes));
 				String str = Utils.toHexStringNoBlank(fcibytes);
 				List<TLVEntity> list = Utils.getNodes(str);
 				for (int i = 0; i < list.size(); i++) {
@@ -1171,16 +1313,16 @@ public class ActivityLoad extends Activity {
 						}
 					}
 				}
-				Log.v(TAG,
+				Log.v(LOGTAG,
 						"解析select指令响应获得PDOL数据:" + Utils.toHexString(PDOLMsg));
-				Log.v(TAG, "重发select指令获得PDOL数据成功");
+				Log.v(LOGTAG, "重发select指令获得PDOL数据成功");
 			} else {
-				Log.v(TAG, "重发select指令响应失败，指令响应为空");
+				Log.v(LOGTAG, "重发select指令响应失败，指令响应为空");
 				continueFlag = false;
 			}
 
 		} catch (Exception e) {
-			Log.e(TAG, "重发select指令异常", e);
+			Log.e(LOGTAG, "重发select指令异常", e);
 			continueFlag = false;
 			showDialog("提示", "初始化充值界面异常\n将发送错误报告。");
 		}
@@ -1192,7 +1334,7 @@ public class ActivityLoad extends Activity {
 	 * @return boolean
 	 */
 	private boolean hasPDOL() {
-		Log.v(TAG, "判断select指令响应中是否包含PDOL数据");
+		Log.v(LOGTAG, "判断select指令响应中是否包含PDOL数据");
 		boolean pdolFlag = false;
 		try {
 			String str = Utils.toHexStringNoBlank(FCIMsg);
@@ -1210,7 +1352,7 @@ public class ActivityLoad extends Activity {
 										.toHexString(list1.get(j).getValue(),
 												0, list1.get(j).length));
 								Log.v(
-										TAG,
+										LOGTAG,
 										"PDOL数据:"
 												+ Utils.toHexStringNoBlank(PDOLMsg));
 								break;
@@ -1219,29 +1361,29 @@ public class ActivityLoad extends Activity {
 					}
 				}
 			} else if ("6A81".equals(str.substring(str.length() - 4))) {
-				Log.v(TAG, "select指令响应结果为6A81，卡片被锁或命令不支持");
+				Log.v(LOGTAG, "select指令响应结果为6A81，卡片被锁或命令不支持");
 				continueFlag = false;
 			} else if ("6A82".equals(str.substring(str.length() - 4))) {
-				Log.v(TAG, "select指令响应结果为6A82，所选的文件未找到");
+				Log.v(LOGTAG, "select指令响应结果为6A82，所选的文件未找到");
 				continueFlag = false;
 			} else if ("6283".equals(str.substring(str.length() - 4))) {
-				Log.v(TAG, "select指令响应结果为6283，选择文件无效");
+				Log.v(LOGTAG, "select指令响应结果为6283，选择文件无效");
 				continueFlag = false;
 			} else {
-				Log.v(TAG, "select指令响应失败，响应结果为:" + str);
+				Log.v(LOGTAG, "select指令响应失败，响应结果为:" + str);
 			}
 
 			if (PDOLMsg != null) {
 				pdolFlag = true;
 			} else {
-				Log.v(TAG, "select指令响应中不包含PDOL数据");
+				Log.v(LOGTAG, "select指令响应中不包含PDOL数据");
 			}
 		} catch (NumberFormatException e) {
-			Log.e(TAG, "解析PDOL数据失败", e);
+			Log.e(LOGTAG, "解析PDOL数据失败", e);
 			continueFlag = false;
 			showDialog("提示", "初始化充值界面异常\n解析PDOL数据失败，将发送错误报告。");
 		} catch (Exception e) {
-			Log.e(TAG, "解析PDOL数据失败", e);
+			Log.e(LOGTAG, "解析PDOL数据失败", e);
 			continueFlag = false;
 			showDialog("提示", "初始化充值界面异常\n解析PDOL数据失败，将发送错误报告。");
 		}
@@ -1261,7 +1403,7 @@ public class ActivityLoad extends Activity {
 	private Map<String, String> getIssuerData(String atc, String balance,
 			String aam, String ac) throws Exception {
 		byte[] key = ByteUtil
-				.hexStringToByteArray("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+				.hexStringToByteArray("AABCDEE051E0052B88E0994F8D1695F3");
 
 		String pbocATC = new String(atc);//
 		String pbocECBalance = new String(balance);//
