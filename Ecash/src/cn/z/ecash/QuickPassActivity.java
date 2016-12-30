@@ -22,6 +22,7 @@ import android.content.res.Resources;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.text.format.Time;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -178,26 +179,33 @@ public class QuickPassActivity extends Activity {
 				toff++;
 			}
 			short aipoff = Utils.findValueOffByTag((short) 0x82, gporesbytes,
-					(short) toff, (short) gporesbytes[toff - 1]);
+					(short) toff, (short) (0x00FF & gporesbytes[toff - 1]));
+			Log.i(LOGTAG, "【processforquickpass】:AIP offset:" + aipoff);
+
 			if (aipoff < 0) {
 				Log.i(LOGTAG, "【processforquickpass】:AIP not found");
-				return purchaseresult;
+				return purchaseresult; 
 			}
 			strAIP = GPOres.substring(aipoff * 2, aipoff * 2 + 4);
+			
 			short afloff = Utils.findValueOffByTag((short) 0x94, gporesbytes,
-					(short) toff, (short) gporesbytes[toff - 1]);
-			if (aipoff < 0) {
+					(short) toff, (short) (0x00FF & gporesbytes[toff - 1]));
+			Log.i(LOGTAG, "【processforquickpass】:AFL offset:"+afloff);
+			if (afloff < 0) {
 				Log.i(LOGTAG, "【processforquickpass】:AFL not found");
 				return purchaseresult;
 			}
-			strAFL = GPOres.substring(afloff * 2, afloff * 2
-					+ gporesbytes[afloff - 1] * 2);
+			Log.i(LOGTAG, "【processforquickpass】:strAFL off :" + ( afloff * 2 +gporesbytes[afloff - 1] * 2));
+			strAFL = GPOres.substring(afloff * 2, afloff * 2 +gporesbytes[afloff - 1] * 2);
+			Log.i(LOGTAG, "【processforquickpass】:AFL:"+strAFL);
+
+//			strAFL = "1005070118010300";
 
 		} else {
 			strAIP = GPOres.substring(4, 8);
 			strAFL = GPOres.substring(8);
 		}
-		Log.i(LOGTAG, "【processforquickpass】:GPOret-->" + GPOres + "AFL-->"
+		Log.i(LOGTAG, "【processforquickpass】:GPOret-->" + GPOres + "\nAFL-->"
 				+ strAFL);
 
 		sendAndParseRR(strAFL);
@@ -517,6 +525,12 @@ public class QuickPassActivity extends Activity {
 							R.string.tagDF60value));
 					continue;
 				}
+				// 交易时间
+				if (getResources().getString(R.string.tag9F21).equals(pd)) {
+					SimpleDateFormat dftime = new SimpleDateFormat("HHmmss");
+					datastr.append(dftime.format(new Date()));
+					continue;
+				}
 			}
 
 			StringBuffer sb = new StringBuffer();
@@ -579,54 +593,119 @@ public class QuickPassActivity extends Activity {
 		if (pdolmsg != null) {
 			pdolcontext = new ArrayList<String>();
 			String pdoltemp = Utils.toHexStringNoBlank(pdolmsg);
-			if (pdoltemp.contains(getResources().getString(R.string.tag9F66))) {
+			int[] pdolsort = new int[pdolmsg.length/2];
+			
+			int tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag9F66));
+			if (tagoff >= 0) {
 				Log.i(LOGTAG, "PDOL数据包含9F66:终端交易属性");
-				pdolcontext.add(getResources().getString(R.string.tag9F66));
+				pdolsort[tagoff/4] = R.string.tag9F66;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag9F7A))) {
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag9F7A));
+			if (tagoff >= 0) {
 				Log.i(LOGTAG, "PDOL数据包含9F7A:电子现金终端支持指示器");
-				pdolcontext.add(getResources().getString(R.string.tag9F7A));
+				pdolsort[tagoff/4] = R.string.tag9F7A;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag9F7B))) {
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag9F7B));
+			if (tagoff >= 0) {
 				Log.i(LOGTAG, "PDOL数据包含9F7B:电子现金终端交易限额");
-				pdolcontext.add(getResources().getString(R.string.tag9F7B));
+				pdolsort[tagoff/4] = R.string.tag9F7B;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag9F02))) {
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag9F02));
+			if (tagoff >= 0) {
 				Log.i(LOGTAG, "PDOL数据包含9F02:授权金额");
-				pdolcontext.add(getResources().getString(R.string.tag9F02));
+				pdolsort[tagoff/4] = R.string.tag9F02;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag9F03))) {
-				Log.i(LOGTAG, "PDOL数据包含9F03:其它金额");
-				pdolcontext.add(getResources().getString(R.string.tag9F03));
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag9F03));
+			if (tagoff >= 0) {
+				pdolsort[tagoff/4] = R.string.tag9F03;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag9F1A))) {
-				Log.i(LOGTAG, "PDOL数据包含9F1A:终端国家代码");
-				pdolcontext.add(getResources().getString(R.string.tag9F1A));
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag95));
+			if (tagoff >= 0) {
+				pdolsort[tagoff/4] = R.string.tag95;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag95))) {
-				Log.i(LOGTAG, "PDOL数据包含95:终端验证结果");
-				pdolcontext.add(getResources().getString(R.string.tag95));
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag9C));
+			if (tagoff >= 0) {
+				pdolsort[tagoff/4] = R.string.tag9C;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag5F2A))) {
-				Log.i(LOGTAG, "PDOL数据包含5F2A:交易货币代码");
-				pdolcontext.add(getResources().getString(R.string.tag5F2A));
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag9F37));
+			if (tagoff >= 0) {
+				pdolsort[tagoff/4] = R.string.tag9F37;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag9A))) {
-				Log.i(LOGTAG, "PDOL数据包含9A:交易日期");
-				pdolcontext.add(getResources().getString(R.string.tag9A));
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tagDF60));
+			if (tagoff >= 0) {
+				pdolsort[tagoff/4] = R.string.tagDF60;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag9C))) {
-				Log.i(LOGTAG, "PDOL数据包含9C:交易类型");
-				pdolcontext.add(getResources().getString(R.string.tag9C));
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag5F2A));
+			if (tagoff >= 0) {
+				pdolsort[tagoff/4] = R.string.tag5F2A;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tag9F37))) {
-				Log.i(LOGTAG, "PDOL数据包含9F37:终端不可预知数据");
-				pdolcontext.add(getResources().getString(R.string.tag9F37));
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag9A));
+			if (tagoff >= 0) {
+				pdolsort[tagoff/4] = R.string.tag9A;
 			}
-			if (pdoltemp.contains(getResources().getString(R.string.tagDF60))) {
-				Log.i(LOGTAG, "PDOL数据包含DF60:CAPP 交易指示位");
-				pdolcontext.add(getResources().getString(R.string.tagDF60));
+			tagoff = pdoltemp.indexOf(getResources().getString(R.string.tag9F21));
+			if (tagoff >= 0) {
+				pdolsort[tagoff/4] = R.string.tag9F21;
 			}
+			for(int i = 0; i < pdolsort.length;i++){
+				if(pdolsort[i] > 0){
+					pdolcontext.add(getResources().getString(pdolsort[i]));
+				}
+			}
+			
+			
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9F66))) {
+//				Log.i(LOGTAG, "PDOL数据包含9F66:终端交易属性");
+//				pdolcontext.add(getResources().getString(R.string.tag9F66));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9F7A))) {
+//				Log.i(LOGTAG, "PDOL数据包含9F7A:电子现金终端支持指示器");
+//				pdolcontext.add(getResources().getString(R.string.tag9F7A));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9F7B))) {
+//				Log.i(LOGTAG, "PDOL数据包含9F7B:电子现金终端交易限额");
+//				pdolcontext.add(getResources().getString(R.string.tag9F7B));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9F02))) {
+//				Log.i(LOGTAG, "PDOL数据包含9F02:授权金额");
+//				pdolcontext.add(getResources().getString(R.string.tag9F02));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9F03))) {
+//				Log.i(LOGTAG, "PDOL数据包含9F03:其它金额");
+//				pdolcontext.add(getResources().getString(R.string.tag9F03));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9F1A))) {
+//				Log.i(LOGTAG, "PDOL数据包含9F1A:终端国家代码");
+//				pdolcontext.add(getResources().getString(R.string.tag9F1A));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag95))) {
+//				Log.i(LOGTAG, "PDOL数据包含95:终端验证结果");
+//				pdolcontext.add(getResources().getString(R.string.tag95));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9C))) {
+//				Log.i(LOGTAG, "PDOL数据包含9C:交易类型");
+//				pdolcontext.add(getResources().getString(R.string.tag9C));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9F37))) {
+//				Log.i(LOGTAG, "PDOL数据包含9F37:终端不可预知数据");
+//				pdolcontext.add(getResources().getString(R.string.tag9F37));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tagDF60))) {
+//				Log.i(LOGTAG, "PDOL数据包含DF60:CAPP 交易指示位");
+//				pdolcontext.add(getResources().getString(R.string.tagDF60));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag5F2A))) {
+//				Log.i(LOGTAG, "PDOL数据包含5F2A:交易货币代码");
+//				pdolcontext.add(getResources().getString(R.string.tag5F2A));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9A))) {
+//				Log.i(LOGTAG, "PDOL数据包含9A:交易日期");
+//				pdolcontext.add(getResources().getString(R.string.tag9A));
+//			}
+//			if (pdoltemp.contains(getResources().getString(R.string.tag9F21))) {
+//				Log.i(LOGTAG, "PDOL数据包含9F21:交易时间");
+//				pdolcontext.add(getResources().getString(R.string.tag9F21));
+//			}
 		}
 		return pdolcontext;
 	}
